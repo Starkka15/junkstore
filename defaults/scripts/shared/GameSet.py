@@ -396,7 +396,17 @@ class GameSet:
         for section in sections:
             script += f"# {section['Name']}\n"
             for option in section['Options']:
-                script += f"export {section['Name'].upper()}_{option['Key'].upper()}=\"{option['Value']}\"\n"
+                unset = 'UnsetIfEmpty' in option and option['UnsetIfEmpty'] == True and option['Value'] == ''
+                if unset:
+                    if 'NoPrefix' in option and option['NoPrefix'] == True:
+                        script += f"unset {option['Key'].upper()}\n"
+                    else:
+                        script += f"unset {section['Name'].upper()}_{option['Key'].upper()}\n"
+                    continue
+                if 'NoPrefix' in option and option['NoPrefix'] == True:
+                    script += f"export {option['Key'].upper()}=\"{option['Value']}\"\n"
+                else:
+                    script += f"export {section['Name'].upper()}_{option['Key'].upper()}=\"{option['Value']}\"\n"
             script += "\n"
         return script
 
