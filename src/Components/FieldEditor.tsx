@@ -89,7 +89,7 @@ const FieldItem: VFC<FieldProps> = ({ field, value, onChange, fieldType }) => {
                         selectedOption={value}
                         rgOptions={field.EnumValues.map((enumValue) => ({
                             data: enumValue.Key,
-                            label: enumValue.Key,
+                            label: enumValue.Label || enumValue.Key,
                         }))}
                         onChange={(e) => onChange(e.data)}
                     />

@@ -11,6 +11,7 @@ declare global {
 export interface EnumStrings {
   Key: string;
   Description: string;
+  Label?: string;
 }
 export interface LogFile {
   FileName: string;
