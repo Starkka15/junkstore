@@ -287,6 +287,24 @@
       "ModeLevel": 0,
       "Options": [
         {
+          "Key": "DISABLE_LSFG",
+          "Label": "Disable LSFG-VK",
+          "Description": "Disable LSFG-VK for this game, use this if you have issues with LSFG-VK.",
+          "DefaultValue": "1",
+          "Value": "1",
+          "Type": "Enum",
+          "Min": 0,
+          "Max": 0,
+          "ModeLevel": 0,
+          "NoPrefix": true,
+          "UnsetIfEmpty": true,
+          "Parents": [],
+          "EnumValues": [
+            { "Key": "", "Description": "Enable LSFG-VK", "Label": "Enable" },
+            { "Key": "1", "Description": "Disable LSFG-VK", "Label": "Disable" }
+          ]
+        },
+        {
           "Key": "LEGACY",
           "Label": "Enable LSFG",
           "Description": "Enable LSFG for this game",
@@ -340,6 +358,56 @@
           "ModeLevel": 0,
           "Parents": [],
           "EnumValues": []
+        },
+        {
+          "Key": "NO_FP16",
+          "Label": "Disable FP16",
+          "Description": "Disable half-precision shader operations. By default, LSFG-VK uses FP16 for performance gains on AMD cards. Enable this to disable FP16.",
+          "DefaultValue": "",
+          "Value": "",
+          "Type": "Enum",
+          "Min": 0,
+          "Max": 0,
+          "ModeLevel": 0,
+          "UnsetIfEmpty": true,
+          "Parents": [],
+          "EnumValues": [
+            { "Key": "", "Description": "Allow FP16 (default)", "Label": "Allow FP16" },
+            { "Key": "1", "Description": "Disable FP16", "Label": "Disable FP16" }
+          ]
+        },
+        {
+          "Key": "GPU",
+          "Label": "GPU",
+          "Description": "Specify which GPU to use for LSFG-VK. Can be a GPU name, uppercase ID (e.g., 0x10DE:0x2C02), or PCI bus ID. Leave empty to use primary GPU.",
+          "DefaultValue": "",
+          "Value": "",
+          "Type": "String",
+          "Min": 0,
+          "Max": 0,
+          "ModeLevel": 0,
+          "UnsetIfEmpty": true,
+          "Parents": [],
+          "EnumValues": []
+        },
+        {
+          "Key": "PACING",
+          "Label": "Frame Pacing",
+          "Description": "Determines frame synchronization with application refresh rate",
+          "DefaultValue": "",
+          "Value": "",
+          "Type": "Enum",
+          "Min": 0,
+          "Max": 0,
+          "ModeLevel": 0,
+          "UnsetIfEmpty": true,
+          "Parents": [],
+          "EnumValues": [
+            { "Key": "", "Description": "Use default (none)", "Label": "Default" },
+            { "Key": "none", "Description": "No frame pacing", "Label": "None" },
+            { "Key": "vsync", "Description": "Synchronize with VSync", "Label": "VSync" },
+            { "Key": "adaptive", "Description": "Adaptive frame pacing", "Label": "Adaptive" }
+          ]
         },
         {
           "Key": "HDR_MODE",
