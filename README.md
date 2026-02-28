@@ -21,7 +21,15 @@ To give it some functionality for users it comes with a pre-written script to al
 ## Integrations:
 Currently we have fully integrated support for Epic Games that ships with the plugin.
 
-Gog integration is via Patreon or Ko-fi only at this time. You can sign up as a monthly supporter or purchase the Gog script as a one off.
+### Unofficial Extensions (included in this fork)
+This fork includes **unofficial** GOG and Amazon Games extensions. These are community-built and not affiliated with or supported by the official Junk Store project.
+
+- **GOG** — Uses lgogdownloader and gogdl (via Flatpak). Install dependencies from the About menu before use.
+- **Amazon Games** — Uses nile. Install dependencies from the About menu before use.
+
+**Note:** Both GOG and Amazon require a **keyboard** to log in. GOG opens a browser-based login window, and Amazon requires pasting a redirect URL. A physical or virtual keyboard is needed to complete the login process.
+
+For the official GOG integration, visit the original project's Patreon or Ko-fi.
 
 
 ## Installing
