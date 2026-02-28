@@ -69,9 +69,9 @@ function EA_download(){
     PROGRESS_LOG="${DECKY_PLUGIN_LOG_DIR}/${1}.progress"
     GAME_PATH="${INSTALL_DIR}/${1}"
     mkdir -p "${GAME_PATH}"
-    # Run maxima-cli directly so stderr (progress) flows to the log file
-    # Then update DB with install path after download completes
-    eaupdategamedetailsaftercmd "${1}" "${GAME_PATH}" $MAXIMA_CMD install "${1}" --path "${GAME_PATH}" 2> $PROGRESS_LOG > "${DECKY_PLUGIN_LOG_DIR}/${1}.output" &
+    # Run maxima-cli directly so progress output flows to the log file
+    # maxima-cli writes all output (including progress) to stdout
+    eaupdategamedetailsaftercmd "${1}" "${GAME_PATH}" $MAXIMA_CMD install --path "${GAME_PATH}" "${1}" > $PROGRESS_LOG 2>&1 &
     echo $! > "${DECKY_PLUGIN_LOG_DIR}/${1}.pid"
     echo "{\"Type\": \"Progress\", \"Content\": {\"Message\": \"Downloading\"}}"
 }
