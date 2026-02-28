@@ -321,7 +321,7 @@ class EA(GamesDb.GamesDb):
 
         try:
             with open(file_path, "r") as f:
-                lines = f.readlines()
+                lines = [self._strip_ansi(l) for l in f.readlines()]
 
                 percent = None
                 downloaded = ""

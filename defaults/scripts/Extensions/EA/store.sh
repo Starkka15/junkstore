@@ -67,11 +67,13 @@ function EA_cancelinstall(){
 
 function EA_download(){
     PROGRESS_LOG="${DECKY_PLUGIN_LOG_DIR}/${1}.progress"
-    mkdir -p "${INSTALL_DIR}"
-    $EACONF --download-game "${1}" --install-dir "${INSTALL_DIR}" --dbfile $DBFILE 2> $PROGRESS_LOG > "${DECKY_PLUGIN_LOG_DIR}/${1}.output" &
+    GAME_PATH="${INSTALL_DIR}/${1}"
+    mkdir -p "${GAME_PATH}"
+    # Run maxima-cli directly so stderr (progress) flows to the log file
+    # Then update DB with install path after download completes
+    eaupdategamedetailsaftercmd "${1}" "${GAME_PATH}" $MAXIMA_CMD install "${1}" --path "${GAME_PATH}" 2> $PROGRESS_LOG > "${DECKY_PLUGIN_LOG_DIR}/${1}.output" &
     echo $! > "${DECKY_PLUGIN_LOG_DIR}/${1}.pid"
     echo "{\"Type\": \"Progress\", \"Content\": {\"Message\": \"Downloading\"}}"
-
 }
 
 function EA_install(){
@@ -215,4 +217,21 @@ function EA_savetabconfig(){
     cat > "${DECKY_PLUGIN_RUNTIME_DIR}/conf_schemas/eatabconfig.json"
     echo "{\"Type\": \"Success\", \"Content\": {\"Message\": \"EA tab config saved\"}}"
 
+}
+
+function eaupdategamedetailsaftercmd() {
+    game=$1
+    game_path=$2
+    shift 2
+    "$@"
+    # Update DB with install path after download
+    $EACONF --update-game-details $game --dbfile $DBFILE &> /dev/null
+    python3 -c "
+import sys, sqlite3
+conn = sqlite3.connect('$DBFILE')
+c = conn.cursor()
+c.execute('UPDATE Game SET RootFolder=?, InstallPath=? WHERE ShortName=?', ('$game_path', '$game_path', '$game'))
+conn.commit()
+conn.close()
+" &> /dev/null
 }
