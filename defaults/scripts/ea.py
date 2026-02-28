@@ -21,24 +21,32 @@ class EA(GamesDb.GamesDb):
         self.storeURL = "https://www.ea.com/ea-play"
 
     maxima_cmd = os.environ.get('MAXIMA_CMD', os.path.expanduser('~/.local/bin/maxima-cli'))
+    _ansi_re = re.compile(r'\x1b\[[0-9;]*m')
+
+    def _strip_ansi(self, text):
+        return self._ansi_re.sub('', text)
 
     def execute_shell(self, cmd):
+        env = os.environ.copy()
+        env['NO_COLOR'] = '1'
         result = subprocess.Popen(cmd, stdout=subprocess.PIPE, stdin=subprocess.PIPE,
                                   stderr=subprocess.PIPE,
-                                  shell=True).communicate()
+                                  shell=True, env=env).communicate()
         stdout = result[0].decode()
         stderr = result[1].decode()
         # maxima-cli outputs most things via log crate to stderr
-        combined = stdout + stderr
+        combined = self._strip_ansi(stdout + stderr)
         if combined.strip() == "":
             raise CmdException(f"Command produced no output: {cmd}")
         return combined
 
     def execute_shell_stdout(self, cmd):
+        env = os.environ.copy()
+        env['NO_COLOR'] = '1'
         result = subprocess.Popen(cmd, stdout=subprocess.PIPE, stdin=subprocess.PIPE,
                                   stderr=subprocess.PIPE,
-                                  shell=True).communicate()
-        return result[0].decode()
+                                  shell=True, env=env).communicate()
+        return self._strip_ansi(result[0].decode())
 
     def _parse_list_games_output(self, output):
         """Parse maxima-cli list-games output into a list of game dicts.
