@@ -11,9 +11,13 @@ shift
 
 source "${DECKY_PLUGIN_DIR}/scripts/Extensions/EA/settings.sh"
 
-# maxima-cli handles OAuth login internally
-# Running account-info triggers the login flow if not logged in
-# It opens a browser to EA's OAuth page and listens on port 31033 for the callback
+# Find a real browser for EA OAuth login (not Steam overlay)
+if flatpak list --app --columns=application 2>/dev/null | grep -q org.mozilla.firefox; then
+    export BROWSER="${DECKY_PLUGIN_DIR}/scripts/Extensions/EA/open-browser.sh"
+elif command -v firefox &>/dev/null; then
+    export BROWSER=firefox
+fi
+
 echo "Starting EA Play login..." >> "${DECKY_PLUGIN_LOG_DIR}/ealogin.log"
 
 $MAXIMA_CMD account-info &>> "${DECKY_PLUGIN_LOG_DIR}/ealogin.log"
