@@ -11,11 +11,9 @@ shift
 
 source "${DECKY_PLUGIN_DIR}/scripts/Extensions/EA/settings.sh"
 
-# Find a real browser for EA OAuth login (not Steam overlay)
-if flatpak list --app --columns=application 2>/dev/null | grep -q org.mozilla.firefox; then
-    export BROWSER="${DECKY_PLUGIN_DIR}/scripts/Extensions/EA/open-browser.sh"
-elif command -v firefox &>/dev/null; then
-    export BROWSER=firefox
+# Use the browser wrapper installed by install_deps.sh
+if [[ -f "${HOME}/.local/bin/open-browser" ]]; then
+    export BROWSER="${HOME}/.local/bin/open-browser"
 fi
 
 echo "Starting EA Play login..." >> "${DECKY_PLUGIN_LOG_DIR}/ealogin.log"
