@@ -10,7 +10,13 @@ DBFILE="${DECKY_PLUGIN_RUNTIME_DIR}/ea.db"
 
 export MAXIMA_CMD="${HOME}/.local/bin/maxima-cli"
 export MAXIMA_DISABLE_QRC=1
-export BROWSER=firefox
+
+# Find a real browser for EA OAuth login (not Steam overlay)
+if flatpak list --app --columns=application 2>/dev/null | grep -q org.mozilla.firefox; then
+    export BROWSER="${DECKY_PLUGIN_DIR}/scripts/Extensions/EA/open-browser.sh"
+elif command -v firefox &>/dev/null; then
+    export BROWSER=firefox
+fi
 
 if [[ -f "${DECKY_PLUGIN_RUNTIME_DIR}/conf_schemas/eatabconfig.json" ]]; then
     TEMP="${DECKY_PLUGIN_RUNTIME_DIR}/conf_schemas/eatabconfig.json"
