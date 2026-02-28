@@ -51,15 +51,17 @@ class EA(GamesDb.GamesDb):
     def _parse_list_games_output(self, output):
         """Parse maxima-cli list-games output into a list of game dicts.
         Format: <slug> - <name> - <offer_id> - Installed: true/false
-        Lines may have a log prefix like [INFO  maxima_cli]
+        Lines have a log prefix like INFO - [maxima_cli] -
         """
         games = []
-        # Match lines with the game listing pattern
+        log_prefix = re.compile(r'.*\[maxima_cli\]\s*-\s*')
         pattern = re.compile(
             r'(\S+)\s+- (.+?)\s+- ([\w.:\-]+)\s+- Installed: (true|false)',
             re.IGNORECASE
         )
         for line in output.split('\n'):
+            # Strip the log prefix before matching
+            line = log_prefix.sub('', line)
             match = pattern.search(line)
             if match:
                 slug = match.group(1).strip()
