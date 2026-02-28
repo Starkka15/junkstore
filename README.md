@@ -29,7 +29,7 @@ This fork includes **unofficial** GOG and Amazon Games extensions. These are com
 
 **Note:** Both GOG and Amazon require a **keyboard** to log in. GOG opens a browser-based login window, and Amazon requires pasting a redirect URL. A physical or virtual keyboard is needed to complete the login process.
 
-For the official GOG integration, visit the original project's Patreon or Ko-fi.
+For the official GOG integration (which is notably better), visit the original project's Patreon or Ko-fi.
 
 
 ## Installing
