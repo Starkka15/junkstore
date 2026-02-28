@@ -19,8 +19,20 @@ shift
 # link to this code and make sure people understand it was YOUR fault.  #
 #########################################################################
 
-function sync-saves(){
-    echo "sync-saves"
+function download-saves(){
+    pushd "${DECKY_PLUGIN_DIR}" > /dev/null
+    SAVE_PATH=$($EPICCONF --get-save-path "$ID" --dbfile $DBFILE 2>/dev/null)
+    popd > /dev/null
+    [[ -z "${SAVE_PATH}" ]] && return
+    $LEGENDARY sync-saves "$ID" --skip-upload --save-path "${SAVE_PATH}" -y >> "${DECKY_PLUGIN_LOG_DIR}/${ID}.log" 2>&1 || true
+}
+
+function upload-saves(){
+    pushd "${DECKY_PLUGIN_DIR}" > /dev/null
+    SAVE_PATH=$($EPICCONF --get-save-path "$ID" --dbfile $DBFILE 2>/dev/null)
+    popd > /dev/null
+    [[ -z "${SAVE_PATH}" ]] && return
+    $LEGENDARY sync-saves "$ID" --skip-download --save-path "${SAVE_PATH}" -y >> "${DECKY_PLUGIN_LOG_DIR}/${ID}.log" 2>&1 || true
 }
 
 
@@ -106,7 +118,7 @@ CMD=${*}
 echo "CMD: ${CMD}"
 
 
-sync-saves
+download-saves
 
 
 QUOTED_ARGS=""
@@ -204,7 +216,7 @@ eval "$(echo -e "${ADVANCED_VARIABLES}")" &>> "${DECKY_PLUGIN_LOG_DIR}/${ID}.log
 eval "$(echo -e "$QUOTED_ARGS")"  &>> "${DECKY_PLUGIN_LOG_DIR}/${ID}.log"
 # eval "${CMD:q} ${ARGS}"  &> "${DECKY_PLUGIN_LOG_DIR}/${ID}.log"
 
-sync-saves
+upload-saves
 
 
 # echo "#!/usr/bin/env bash" > run.sh

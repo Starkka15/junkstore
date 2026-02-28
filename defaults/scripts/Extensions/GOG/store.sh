@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Register actions with the junk-store.sh script
-ACTIONS+=("update-umu-id")
+ACTIONS+=("update-umu-id" "download-saves" "upload-saves")
 
 # Register GOG as a platform with the junk-store.sh script
 PLATFORMS+=("GOG")
@@ -182,6 +182,34 @@ function GOG_logout(){
 function GOG_update-umu-id(){
     TEMP=$($GOGCONF --update-umu-id "${1}" gog --dbfile $DBFILE)
     echo "{\"Type\": \"Success\", \"Content\": {\"Message\": \"Umu Id updated\"}}"
+}
+
+function GOG_download-saves(){
+    PROGRESS_LOG="${DECKY_PLUGIN_LOG_DIR}/${1}.progress"
+    STEAM_CLIENT_ID="${2}"
+    if [[ -z "${STEAM_CLIENT_ID}" ]]; then
+        echo '{"Type": "Error", "Content": {"Message": "No SteamClientID - launch game once first"}}'
+        return
+    fi
+    pushd "${DECKY_PLUGIN_DIR}" > /dev/null
+    $GOGCONF --sync-saves "${1}" --skip-upload --dbfile $DBFILE >> "${DECKY_PLUGIN_LOG_DIR}/${1}.log" 2>> $PROGRESS_LOG &
+    echo $! > "${DECKY_PLUGIN_LOG_DIR}/${1}.pid"
+    popd > /dev/null
+    echo '{"Type": "Progress", "Content": {"Message": "Downloading Saves"}}'
+}
+
+function GOG_upload-saves(){
+    PROGRESS_LOG="${DECKY_PLUGIN_LOG_DIR}/${1}.progress"
+    STEAM_CLIENT_ID="${2}"
+    if [[ -z "${STEAM_CLIENT_ID}" ]]; then
+        echo '{"Type": "Error", "Content": {"Message": "No SteamClientID - launch game once first"}}'
+        return
+    fi
+    pushd "${DECKY_PLUGIN_DIR}" > /dev/null
+    $GOGCONF --sync-saves "${1}" --skip-download --dbfile $DBFILE >> "${DECKY_PLUGIN_LOG_DIR}/${1}.log" 2>> $PROGRESS_LOG &
+    echo $! > "${DECKY_PLUGIN_LOG_DIR}/${1}.pid"
+    popd > /dev/null
+    echo '{"Type": "Progress", "Content": {"Message": "Uploading Saves"}}'
 }
 
 function GOG_run-exe(){

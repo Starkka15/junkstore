@@ -46,6 +46,8 @@ class EpicArgs(GameSet.GenericArgs):
         
         self.parser.add_argument(
             '--flush-cache', help='Flush cache' , action='store_true')
+        self.parser.add_argument(
+            '--get-save-path', nargs='+', help='Get resolved save path: game_id [steam_client_id]')
 
     def parseArgs(self):
         super().parseArgs()
@@ -92,6 +94,10 @@ class EpicArgs(GameSet.GenericArgs):
             if self.args.get_game_size:
                 print(self.gameSet.get_game_size(
                     self.args.get_game_size[0], self.args.get_game_size[1]))
+            if self.args.get_save_path:
+                steam_id = self.args.get_save_path[1] if len(self.args.get_save_path) > 1 else None
+                print(self.gameSet.get_save_path(
+                    self.args.get_save_path[0], steam_id))
             if not any(vars(self.args).values()):
                 self.parser.print_help()
         except epic.CmdException as e:

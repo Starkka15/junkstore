@@ -16,7 +16,8 @@ ACTIONS=("init" "getgames" "getactions" "saveconfig" "getconfig" "download" \
 "getgamedetails" "getbats" "savebats" "getprogress" "login" \
 "login-launch-options" "logout" "loginstatus" "getsetting" "savesetting" \
 "getlaunchoptions" "run-exe" "get-exe-list" "gettabconfig" "savetabconfig" \
-"saveplatformconfig" "getplatformconfig" "refresh" "getgamesize" "move" "repair_and_update")
+"saveplatformconfig" "getplatformconfig" "refresh" "getgamesize" "move" "repair_and_update" \
+"download-saves" "upload-saves")
 
 
 # Function to source scripts recursively from a directory

@@ -18,6 +18,39 @@ from datetime import datetime, timedelta
 class CmdException(Exception):
     pass
 
+
+def resolve_epic_save_path(cloud_save_folder, prefix_path):
+    """Resolve Epic cloud_save_folder template to a real path inside a Wine prefix.
+
+    Templates use variables like {AppData}, {UserDir}, {InstallDir}, etc.
+    """
+    if not cloud_save_folder:
+        return ''
+
+    user_dir = os.path.join(prefix_path, 'drive_c/users/steamuser')
+
+    var_map = {
+        '{appdata}': os.path.join(user_dir, 'AppData/Roaming'),
+        '{localappdata}': os.path.join(user_dir, 'AppData/Local'),
+        '{userdir}': os.path.join(user_dir, 'Documents'),
+        '{usersavedgames}': os.path.join(user_dir, 'Saved Games'),
+        '{userprofile}': user_dir,
+    }
+
+    result = cloud_save_folder
+    lower = result.lower()
+    for var, path in var_map.items():
+        idx = lower.find(var)
+        if idx != -1:
+            result = path + result[idx + len(var):]
+            break
+
+    result = result.replace('\\', '/')
+    # Normalize .. in paths
+    result = os.path.normpath(result)
+    return result
+
+
 class Epic(GamesDb.GamesDb):
     def __init__(self, db_file, storeName, setNameConfig=None):
         super().__init__(db_file, storeName=storeName,  setNameConfig=setNameConfig)
@@ -205,6 +238,43 @@ class Epic(GamesDb.GamesDb):
         except CmdException as e:
             raise e
     
+    def get_save_path(self, game_id, steam_client_id=None):
+        """Get the resolved cloud save path for a game inside the Steam compatdata prefix."""
+        if not steam_client_id:
+            # Look up from DB
+            conn = self.get_connection()
+            c = conn.cursor()
+            c.execute("SELECT SteamClientID FROM Game WHERE ShortName=?", (game_id,))
+            result = c.fetchone()
+            conn.close()
+            if result and result[0]:
+                steam_client_id = result[0]
+            else:
+                return ''
+
+        prefix = os.path.expanduser(
+            f"~/.local/share/Steam/steamapps/compatdata/{steam_client_id}/pfx")
+
+        # Get cloud_save_folder from legendary
+        try:
+            result = subprocess.Popen(
+                f"{self.legendary_cmd} info {game_id} --json",
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True
+            ).communicate()[0].decode()
+            info = json.loads(result)
+            cloud_save_folder = info.get('game', {}).get('cloud_save_folder', '')
+        except Exception as e:
+            print(f"Error getting save path: {e}", file=sys.stderr)
+            return ''
+
+        if not cloud_save_folder:
+            print(f"No cloud_save_folder for {game_id}", file=sys.stderr)
+            return ''
+
+        resolved = resolve_epic_save_path(cloud_save_folder, prefix)
+        print(f"Resolved save path: {resolved}", file=sys.stderr)
+        return resolved
+
     def get_game_size(self, game_id, installed):
         if installed == 'true':
             conn = self.get_connection()

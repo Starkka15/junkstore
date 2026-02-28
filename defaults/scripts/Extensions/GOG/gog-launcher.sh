@@ -13,6 +13,18 @@ shift
 
 source "${DECKY_PLUGIN_DIR}/scripts/Extensions/GOG/settings.sh"
 
+function download-saves(){
+    pushd "${DECKY_PLUGIN_DIR}" > /dev/null
+    $GOGCONF --sync-saves "$ID" --skip-upload --dbfile $DBFILE >> "${DECKY_PLUGIN_LOG_DIR}/${ID}.log" 2>&1 || true
+    popd > /dev/null
+}
+
+function upload-saves(){
+    pushd "${DECKY_PLUGIN_DIR}" > /dev/null
+    $GOGCONF --sync-saves "$ID" --skip-download --dbfile $DBFILE >> "${DECKY_PLUGIN_LOG_DIR}/${ID}.log" 2>&1 || true
+    popd > /dev/null
+}
+
 echo "dbfile: ${DBFILE}"
 SETTINGS=$($GOGCONF --get-env-settings $ID --dbfile $DBFILE --platform Proton --fork "" --version "" --dbfile $DBFILE)
 echo "${SETTINGS}"
@@ -150,5 +162,9 @@ else
     echo "LSFG-VK not installed" &>> "${DECKY_PLUGIN_LOG_DIR}/${ID}.log"
 fi
 
+download-saves
+
 eval "$(echo -e "${ADVANCED_VARIABLES}")" &>> "${DECKY_PLUGIN_LOG_DIR}/${ID}.log"
 eval "$(echo -e "$QUOTED_ARGS")"  &>> "${DECKY_PLUGIN_LOG_DIR}/${ID}.log"
+
+upload-saves

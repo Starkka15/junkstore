@@ -42,6 +42,12 @@ class GOGArgs(GameSet.GenericArgs):
             '--get-galaxy-tokens', help='Convert galaxy tokens to gogdl auth format')
         self.parser.add_argument(
             '--process-info-file', help='Process goggame info file to extract exe path')
+        self.parser.add_argument(
+            '--sync-saves', help='Sync cloud saves for game')
+        self.parser.add_argument(
+            '--skip-upload', help='Skip uploading saves', action='store_true')
+        self.parser.add_argument(
+            '--skip-download', help='Skip downloading saves', action='store_true')
 
     def parseArgs(self):
         super().parseArgs()
@@ -90,6 +96,11 @@ class GOGArgs(GameSet.GenericArgs):
             if self.args.get_game_size:
                 print(self.gameSet.get_game_size(
                     self.args.get_game_size[0], self.args.get_game_size[1]))
+            if self.args.sync_saves:
+                self.gameSet.sync_saves(
+                    self.args.sync_saves,
+                    skip_upload=self.args.skip_upload,
+                    skip_download=self.args.skip_download)
             if not any(vars(self.args).values()):
                 self.parser.print_help()
         except gog.CmdException as e:

@@ -6,6 +6,7 @@ import sqlite3
 import sys
 import subprocess
 import time
+import urllib.request
 
 import GamesDb
 from datetime import datetime, timedelta
@@ -276,6 +277,131 @@ class GOG(GamesDb.GamesDb):
             except Exception as e:
                 print(f"Error updating GOG game details: {e}", file=sys.stderr)
         conn.close()
+
+    def get_client_id(self, game_id):
+        """Get the Galaxy clientId for a game from the GOG builds API manifest.
+
+        This is the same approach gogdl uses internally (saves.py get_auth_ids).
+        """
+        try:
+            builds_url = f"https://content-system.gog.com/products/{game_id}/os/windows/builds?generation=2"
+            req = urllib.request.Request(builds_url, headers={'User-Agent': 'Mozilla/5.0'})
+            response = urllib.request.urlopen(req, timeout=10)
+            builds = json.loads(response.read())
+
+            meta_url = builds['items'][0]['link']
+            req = urllib.request.Request(meta_url, headers={'User-Agent': 'Mozilla/5.0'})
+            response = urllib.request.urlopen(req, timeout=10)
+            import zlib
+            data = zlib.decompress(response.read())
+            meta = json.loads(data)
+            return meta.get('clientId')
+        except Exception as e:
+            print(f"Error getting clientId from builds API: {e}", file=sys.stderr)
+            return None
+
+    def get_save_paths(self, game_id):
+        """Query GOG remote config API for cloud save locations, resolve against Steam prefix."""
+        conn = self.get_connection()
+        c = conn.cursor()
+        c.execute("SELECT SteamClientID, RootFolder FROM Game WHERE ShortName=?", (game_id,))
+        result = c.fetchone()
+        conn.close()
+
+        if not result or not result[0]:
+            return []
+
+        steam_client_id = result[0]
+        root_folder = result[1] or ''
+        prefix = os.path.expanduser(
+            f"~/.local/share/Steam/steamapps/compatdata/{steam_client_id}/pfx")
+
+        # Try goggame-{id}.info first (fast, local), then builds API (network)
+        client_id = None
+        info_file = os.path.join(root_folder, f'goggame-{game_id}.info')
+        if os.path.exists(info_file):
+            try:
+                with open(info_file) as f:
+                    info = json.load(f)
+                    client_id = info.get('clientId')
+            except Exception as e:
+                print(f"Error reading info file: {e}", file=sys.stderr)
+
+        if not client_id:
+            client_id = self.get_client_id(game_id)
+
+        if not client_id:
+            print(f"Could not determine clientId for game {game_id}", file=sys.stderr)
+            return []
+
+        # Query GOG remote config for save locations
+        try:
+            url = f"https://remote-config.gog.com/components/galaxy_client/clients/{client_id}?component_version=2.0.45"
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            response = urllib.request.urlopen(req, timeout=10)
+            config = json.loads(response.read())
+        except Exception as e:
+            print(f"Error querying GOG remote config: {e}", file=sys.stderr)
+            return []
+
+        # API returns 'Windows' (capital W)
+        saves_info = config.get('content', {}).get('Windows', {}).get('cloudStorage', {})
+        locations = saves_info.get('locations', [])
+
+        if not locations:
+            print(f"No cloud save locations for game {game_id}", file=sys.stderr)
+            return []
+
+        # Map GOG folder variables to paths inside the Steam prefix
+        folder_map = {
+            'INSTALL': root_folder,
+            'APPLICATION_DATA_LOCAL': os.path.join(prefix, 'drive_c/users/steamuser/AppData/Local'),
+            'APPLICATION_DATA_LOCAL_LOW': os.path.join(prefix, 'drive_c/users/steamuser/AppData/LocalLow'),
+            'APPLICATION_DATA_ROAMING': os.path.join(prefix, 'drive_c/users/steamuser/AppData/Roaming'),
+            'SAVED_GAMES': os.path.join(prefix, 'drive_c/users/steamuser/Saved Games'),
+            'DOCUMENTS': os.path.join(prefix, 'drive_c/users/steamuser/Documents'),
+        }
+
+        resolved = []
+        for loc in locations:
+            # API uses 'location' field with <?VAR?> syntax
+            path_template = loc.get('location', loc.get('path', ''))
+            name = loc.get('name', '__default')
+
+            # Replace <?VAR_NAME?> folder variable placeholders
+            resolved_path = path_template
+            for var_name, var_path in folder_map.items():
+                placeholder = f'<?{var_name}?>'
+                if placeholder in resolved_path:
+                    resolved_path = resolved_path.replace(placeholder, var_path)
+                    break
+                # Also handle bare variable prefix (no <? ?> wrapper)
+                if resolved_path.startswith(var_name):
+                    resolved_path = resolved_path.replace(var_name, var_path, 1)
+                    break
+
+            # Convert backslashes to forward slashes
+            resolved_path = resolved_path.replace('\\', '/')
+            resolved.append({'name': name, 'path': resolved_path})
+
+        return resolved
+
+    def sync_saves(self, game_id, skip_upload=False, skip_download=False):
+        """Orchestrate gogdl save-sync for each save location."""
+        locations = self.get_save_paths(game_id)
+        if not locations:
+            print(f"No save locations found for game {game_id}", file=sys.stderr)
+            return
+
+        for loc in locations:
+            cmd = (f'{self.gogdl_cmd} --auth-config-path "{self.auth_tokens}" save-sync '
+                   f'"{loc["path"]}" {game_id} --os windows --ts 0 --name {loc["name"]}')
+            if skip_upload:
+                cmd += ' --skip-upload'
+            if skip_download:
+                cmd += ' --skip-download'
+            print(f"Running save sync: {cmd}", file=sys.stderr)
+            subprocess.run(cmd, shell=True)
 
     # Actual gogdl progress format (multiline):
     # = Progress: 45.67 500/1200, Running for: 00:15:30, ETA: 00:20:00

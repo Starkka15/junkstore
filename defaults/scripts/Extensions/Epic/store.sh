@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Register actions with the junk-store.sh script
-ACTIONS+=("install-overlay" "update-overlay" "remove-overlay" "registry-fix" "update-umu-id")
+ACTIONS+=("install-overlay" "update-overlay" "remove-overlay" "registry-fix" "update-umu-id" "download-saves" "upload-saves")
 
 # Register Epic as a platform with the junk-store.sh script
 PLATFORMS+=("Epic")
@@ -104,10 +104,36 @@ function Epic_remove-overlay(){
 
 function Epic_download-saves(){
     PROGRESS_LOG="${DECKY_PLUGIN_LOG_DIR}/${1}.progress"
-    $LEGENDARY download-saves  $1 -y  >> "${DECKY_PLUGIN_LOG_DIR}/${1}.log" 2>> $PROGRESS_LOG &
+    STEAM_CLIENT_ID="${2}"
+    if [[ -z "${STEAM_CLIENT_ID}" ]]; then
+        echo '{"Type": "Error", "Content": {"Message": "No SteamClientID - launch game once first"}}'
+        return
+    fi
+    SAVE_PATH=$($EPICCONF --get-save-path "${1}" "${STEAM_CLIENT_ID}" --dbfile $DBFILE)
+    if [[ -z "${SAVE_PATH}" ]]; then
+        echo '{"Type": "Error", "Content": {"Message": "No cloud save path found for this game"}}'
+        return
+    fi
+    $LEGENDARY sync-saves $1 --skip-upload --save-path "${SAVE_PATH}" -y >> "${DECKY_PLUGIN_LOG_DIR}/${1}.log" 2>> $PROGRESS_LOG &
     echo $! > "${DECKY_PLUGIN_LOG_DIR}/${1}.pid"
-    echo "{\"Type\": \"Progress\", \"Content\": {\"Message\": \"Downloading Saves\"}}"
+    echo '{"Type": "Progress", "Content": {"Message": "Downloading Saves"}}'
+}
 
+function Epic_upload-saves(){
+    PROGRESS_LOG="${DECKY_PLUGIN_LOG_DIR}/${1}.progress"
+    STEAM_CLIENT_ID="${2}"
+    if [[ -z "${STEAM_CLIENT_ID}" ]]; then
+        echo '{"Type": "Error", "Content": {"Message": "No SteamClientID - launch game once first"}}'
+        return
+    fi
+    SAVE_PATH=$($EPICCONF --get-save-path "${1}" "${STEAM_CLIENT_ID}" --dbfile $DBFILE)
+    if [[ -z "${SAVE_PATH}" ]]; then
+        echo '{"Type": "Error", "Content": {"Message": "No cloud save path found for this game"}}'
+        return
+    fi
+    $LEGENDARY sync-saves $1 --skip-download --save-path "${SAVE_PATH}" -y >> "${DECKY_PLUGIN_LOG_DIR}/${1}.log" 2>> $PROGRESS_LOG &
+    echo $! > "${DECKY_PLUGIN_LOG_DIR}/${1}.pid"
+    echo '{"Type": "Progress", "Content": {"Message": "Uploading Saves"}}'
 }
 function Epic_verify(){
     PROGRESS_LOG="${DECKY_PLUGIN_LOG_DIR}/${1}.progress"

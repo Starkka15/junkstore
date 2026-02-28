@@ -120,6 +120,18 @@
           "Title": "Update UMU Id",
           "Type": "ScriptAction",
           "InstalledOnly": "True"
+        },
+        {
+          "ActionId": "DownloadSaves",
+          "Title": "Download Cloud Saves",
+          "Type": "ScriptAction",
+          "InstalledOnly": "True"
+        },
+        {
+          "ActionId": "UploadSaves",
+          "Title": "Upload Cloud Saves",
+          "Type": "ScriptAction",
+          "InstalledOnly": "True"
         }
       ]
     }
@@ -327,6 +339,18 @@
           "Title": "Update UMU Id",
           "Type": "Executable",
           "Command": "./scripts/junk-store.sh GOG update-umu-id"
+        },
+        {
+          "Id": "DownloadSaves",
+          "Title": "Download saves",
+          "Type": "DownloadSaves",
+          "Command": "./scripts/junk-store.sh GOG download-saves"
+        },
+        {
+          "Id": "UploadSaves",
+          "Title": "Upload saves",
+          "Type": "UploadSaves",
+          "Command": "./scripts/junk-store.sh GOG upload-saves"
         }
       ]
     }
