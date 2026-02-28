@@ -10,6 +10,7 @@ DBFILE="${DECKY_PLUGIN_RUNTIME_DIR}/ea.db"
 
 export MAXIMA_CMD="${HOME}/.local/bin/maxima-cli"
 export MAXIMA_DISABLE_QRC=1
+export BROWSER=firefox
 
 if [[ -f "${DECKY_PLUGIN_RUNTIME_DIR}/conf_schemas/eatabconfig.json" ]]; then
     TEMP="${DECKY_PLUGIN_RUNTIME_DIR}/conf_schemas/eatabconfig.json"
