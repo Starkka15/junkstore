@@ -67,6 +67,7 @@ class Itchio(GamesDb.GamesDb):
             raise CmdException("Not logged in.")
 
         all_games = []
+        download_keys = {}  # game_id -> download_key_id
         page = 1
         while True:
             try:
@@ -85,6 +86,10 @@ class Itchio(GamesDb.GamesDb):
                 game = key_entry.get('game', {})
                 if game and game.get('id'):
                     all_games.append(game)
+                    # Store the download key ID for this game
+                    dk_id = key_entry.get('id')
+                    if dk_id:
+                        download_keys[str(game['id'])] = str(dk_id)
 
             page += 1
 
@@ -99,9 +104,17 @@ class Itchio(GamesDb.GamesDb):
 
         for game_id in left_overs:
             if game_id in game_dict:
-                self.proccess_leftovers(game_dict[game_id])
+                self.proccess_leftovers(game_dict[game_id], download_keys.get(game_id, ''))
 
-    def proccess_leftovers(self, game_data):
+        # Update download key IDs for all games (including ones from GamesDb)
+        conn = self.get_connection()
+        c = conn.cursor()
+        for game_id, dk_id in download_keys.items():
+            c.execute("UPDATE Game SET ManualPath=? WHERE ShortName=?", (dk_id, game_id))
+        conn.commit()
+        conn.close()
+
+    def proccess_leftovers(self, game_data, download_key_id=''):
         """Insert game from itch.io API data that wasn't found in GamesDb."""
         title = game_data.get('title', 'Unknown')
         print(f"Processing leftover itch.io game: {title}", file=sys.stderr)
@@ -116,13 +129,9 @@ class Itchio(GamesDb.GamesDb):
             result = c.fetchone()
             if result is None:
                 notes = game_data.get('short_text', '')
-                # Determine platform info
-                platforms = game_data.get('traits', [])
-                p_linux = game_data.get('p_linux', False)
-                p_windows = game_data.get('p_windows', False)
 
                 vals = [
-                    title, notes, "", "", "",  "", "Itchio",
+                    title, notes, "", download_key_id, "",  "", "Itchio",
                     game_id, "", "", "", "",
                     "", "", "", "", shortname,
                 ]
@@ -147,6 +156,43 @@ class Itchio(GamesDb.GamesDb):
             print(f"Error parsing metadata for itch.io game: {title} {e}", file=sys.stderr)
 
         conn.close()
+
+    def _get_download_key(self, game_id):
+        """Get the download key ID for a game from the database."""
+        conn = self.get_connection()
+        c = conn.cursor()
+        c.execute("SELECT ManualPath FROM Game WHERE ShortName=?", (game_id,))
+        result = c.fetchone()
+        conn.close()
+        if result and result[0]:
+            return result[0]
+        return None
+
+    def _get_uploads(self, game_id):
+        """Get uploads for a game. Tries direct endpoint first, falls back to download key."""
+        # Try direct game uploads endpoint first
+        try:
+            data = self.api_request(f"game/{game_id}/uploads")
+            uploads = data.get('uploads', [])
+            if uploads:
+                print(f"Got {len(uploads)} uploads via direct endpoint", file=sys.stderr)
+                return uploads
+        except Exception as e:
+            print(f"Direct uploads endpoint failed: {e}", file=sys.stderr)
+
+        # Fall back to download key endpoint
+        dk_id = self._get_download_key(game_id)
+        if dk_id:
+            try:
+                data = self.api_request(f"download-key/{dk_id}/uploads")
+                uploads = data.get('uploads', [])
+                if uploads:
+                    print(f"Got {len(uploads)} uploads via download key", file=sys.stderr)
+                    return uploads
+            except Exception as e:
+                print(f"Download key uploads endpoint failed: {e}", file=sys.stderr)
+
+        return []
 
     def _pick_upload(self, uploads):
         """Pick the best upload for download. Prefer Linux > Windows > other."""
@@ -175,13 +221,8 @@ class Itchio(GamesDb.GamesDb):
         """Download a game from itch.io and extract it."""
         print(f"Downloading itch.io game {game_id}", file=sys.stderr)
 
-        # Get uploads for this game
-        try:
-            data = self.api_request(f"game/{game_id}/uploads")
-        except Exception as e:
-            raise CmdException(f"Failed to get uploads for game {game_id}: {e}")
-
-        uploads = data.get('uploads', [])
+        # Get uploads for this game (tries direct, falls back to download key)
+        uploads = self._get_uploads(game_id)
         if not uploads:
             raise CmdException(f"No downloads available for game {game_id}")
 
@@ -199,16 +240,21 @@ class Itchio(GamesDb.GamesDb):
 
         print(f"Selected upload: {filename} ({self.convert_bytes(total_size) if total_size else 'unknown size'}), platform: {platform_type}", file=sys.stderr)
 
-        # Get download URL
+        # Get download URL (try with download key if available)
+        dl_url = ''
+        dk_id = self._get_download_key(game_id)
+        download_endpoint = f"upload/{upload_id}/download"
+        if dk_id:
+            download_endpoint += f"?download_key_id={dk_id}"
+
         try:
-            dl_data = self.api_request(f"upload/{upload_id}/download")
+            dl_data = self.api_request(download_endpoint)
+            dl_url = dl_data.get('url', '')
         except urllib.error.HTTPError as e:
             if e.code == 303 or e.code == 302:
                 dl_url = e.headers.get('Location', '')
             else:
                 raise CmdException(f"Failed to get download URL: {e}")
-        else:
-            dl_url = dl_data.get('url', '')
 
         if not dl_url:
             raise CmdException("No download URL returned")
@@ -626,8 +672,7 @@ class Itchio(GamesDb.GamesDb):
                 size = ""
         else:
             try:
-                data = self.api_request(f"game/{game_id}/uploads")
-                uploads = data.get('uploads', [])
+                uploads = self._get_uploads(game_id)
                 upload = self._pick_upload(uploads) if uploads else None
                 if upload and upload.get('size'):
                     size = f"Download Size: {self.convert_bytes(int(upload['size']))}"
@@ -680,10 +725,7 @@ class Itchio(GamesDb.GamesDb):
         result = c.fetchone()
         if result is not None:
             try:
-                # itch.io doesn't have a direct game info API with the user key,
-                # but we can try getting upload info for size
-                data = self.api_request(f"game/{game_id}/uploads")
-                uploads = data.get('uploads', [])
+                uploads = self._get_uploads(game_id)
                 upload = self._pick_upload(uploads) if uploads else None
                 if upload and upload.get('size'):
                     size = self.convert_bytes(int(upload['size']))
