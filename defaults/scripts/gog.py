@@ -150,15 +150,25 @@ class GOG(GamesDb.GamesDb):
                     auth_data = json.load(f)
                 # Auth tokens format: {client_id: {access_token, refresh_token, ...}}
                 has_tokens = False
-                username = 'GOG User'
+                access_token = None
                 if isinstance(auth_data, dict):
                     for key, val in auth_data.items():
                         if isinstance(val, dict) and (val.get('access_token') or val.get('refresh_token')):
                             has_tokens = True
-                            if val.get('user_id'):
-                                username = str(val['user_id'])
+                            access_token = val.get('access_token')
                             break
                 if has_tokens:
+                    username = 'GOG User'
+                    if access_token:
+                        try:
+                            req = urllib.request.Request(
+                                'https://embed.gog.com/userData.json',
+                                headers={'Authorization': f'Bearer {access_token}'})
+                            resp = urllib.request.urlopen(req, timeout=5)
+                            user_data = json.loads(resp.read())
+                            username = user_data.get('username', username)
+                        except Exception:
+                            pass
                     value = json.dumps({'Type': 'LoginStatus', 'Content': {'Username': username, 'LoggedIn': True}})
                 else:
                     value = json.dumps({'Type': 'LoginStatus', 'Content': {'Username': '', 'LoggedIn': False}})
