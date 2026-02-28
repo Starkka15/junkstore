@@ -1,12 +1,49 @@
 #!/usr/bin/env bash
 
 MAXIMA_BIN="${HOME}/.local/bin/maxima-cli"
+MAXIMA_QRC="${HOME}/.local/bin/maxima-qrc-handler"
 MAXIMA_REPO="https://github.com/Starkka15/Maxima"
+
+function install_qrc_handler() {
+    # Install a lightweight qrc:// protocol handler so maxima-cli's
+    # OAuth login flow works without needing maxima-bootstrap.
+    echo "Installing qrc:// protocol handler for EA login..."
+
+    cat > "${MAXIMA_QRC}" << 'HANDLER'
+#!/bin/bash
+URL="$1"
+[ -z "$URL" ] && exit 1
+CODE=$(echo "$URL" | grep -oP 'code=\K[^&]+')
+[ -z "$CODE" ] && exit 1
+curl -s "http://127.0.0.1:31033/auth?code=${CODE}" >/dev/null 2>&1
+HANDLER
+    chmod +x "${MAXIMA_QRC}"
+
+    mkdir -p "${HOME}/.local/share/applications"
+    cat > "${HOME}/.local/share/applications/maxima-qrc.desktop" << EOF
+[Desktop Entry]
+Type=Application
+Name=Maxima Launcher
+MimeType=x-scheme-handler/qrc
+Exec=${MAXIMA_QRC} %u
+NoDisplay=true
+StartupNotify=true
+EOF
+
+    if command -v xdg-mime &>/dev/null; then
+        xdg-mime default maxima-qrc.desktop x-scheme-handler/qrc
+        echo "qrc:// handler registered"
+    else
+        echo "Warning: xdg-mime not found, qrc handler may not work"
+    fi
+}
 
 function uninstall() {
     echo "Uninstalling EA Play dependencies"
     rm -f "${MAXIMA_BIN}" 2>/dev/null
-    echo "Removed maxima-cli"
+    rm -f "${MAXIMA_QRC}" 2>/dev/null
+    rm -f "${HOME}/.local/share/applications/maxima-qrc.desktop" 2>/dev/null
+    echo "Removed maxima-cli and qrc handler"
 }
 
 function install() {
@@ -79,6 +116,7 @@ function install() {
     # Verify
     if [[ -f "${MAXIMA_BIN}" ]]; then
         echo "maxima-cli: OK"
+        install_qrc_handler
     else
         echo "maxima-cli: NOT FOUND (EA Play will not work)"
     fi

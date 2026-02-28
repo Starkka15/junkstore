@@ -48,7 +48,7 @@ class EA(GamesDb.GamesDb):
         games = []
         # Match lines with the game listing pattern
         pattern = re.compile(
-            r'(\S+)\s+- (.+?)\s+- ([\w.]+)\s+- Installed: (true|false)',
+            r'(\S+)\s+- (.+?)\s+- ([\w.:\-]+)\s+- Installed: (true|false)',
             re.IGNORECASE
         )
         for line in output.split('\n'):
