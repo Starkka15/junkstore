@@ -279,6 +279,23 @@ function launchoptions () {
     }}"
     echo $JSON
 }
+function loginlaunchoptions () {
+    Exe=$1
+    Options=$2
+    WorkingDir=$3
+    Name=$4
+    Compatibility=$5
+    CompatTooName=$6
+    JSON="{\"Type\": \"LaunchOptions\", \"Content\": {
+        \"Exe\": \"${Exe}\",
+        \"Options\": \"${Options}\",
+        \"WorkingDir\": \"${WorkingDir}\",
+        \"Name\": \"${Name}\",
+        \"Compatibility\": \"${Compatibility}\",
+        \"CompatToolName\": \"${CompatTooName}\"
+    }}"
+    echo $JSON
+}
 function login(){
     get_steam_env
     launchoptions "/bin/flatpak" "run com.github.derrod.legendary auth" "" "Epic Games Login" "Epic"

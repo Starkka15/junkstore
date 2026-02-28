@@ -1,0 +1,334 @@
+{
+  "junk-store-actions": {
+    "Type": "ActionSet",
+    "Content": {
+      "SetName": "JunkStoreActions",
+      "Actions": [
+        {
+          "Id": "GetGOGActions",
+          "Title": "Get GOG store actions",
+          "Type": "Init",
+          "Command": "./scripts/get-json.py gog-actions"
+        }
+      ]
+    }
+  },
+  "junk-store-actions-no-tabs": {
+    "Type": "ActionSet",
+    "Content": {
+      "SetName": "JunkStoreActionsNoTabs",
+      "Actions": [
+        {
+          "Id": "GetGOGActions",
+          "Title": "Get GOG store actions",
+          "Type": "Init",
+          "Command": "./scripts/get-json.py gog-actions"
+        }
+      ]
+    }
+  },
+  "main-menu-actions": {
+    "Type": "ActionSet",
+    "Content": {
+      "SetName": "MainMenu",
+      "Actions": [
+        {
+          "Id": "GetGOGActions",
+          "Title": "Get GOG store actions",
+          "Type": "Init",
+          "Command": "./scripts/get-json.py gog-actions"
+        }
+      ]
+    }
+  },
+  "junk-store-tabs": {
+    "Type": "StoreTabs",
+    "Content": {
+      "Tabs": [
+        { "Title": "GOG", "Type": "GameGrid", "ActionId": "GetGOGActions" }
+      ]
+    }
+  },
+  "gog-games-login-actions": {
+    "Type": "ActionSet",
+    "Content": {
+      "SetName": "GOGGamesLoginActions",
+      "Actions": [
+        {
+          "Id": "Login",
+          "Title": "Login",
+          "Type": "Login",
+          "Command": "./scripts/junk-store.sh GOG login"
+        },
+        {
+          "Id": "LoginLaunchOptions",
+          "Title": "Login",
+          "Type": "Login",
+          "Command": "./scripts/junk-store.sh GOG login-launch-options"
+        },
+        {
+          "Id": "Logout",
+          "Title": "Logout",
+          "Type": "Logout",
+          "Command": "./scripts/junk-store.sh GOG logout"
+        },
+        {
+          "Id": "GetContent",
+          "Title": "Status",
+          "Type": "Status",
+          "Command": "./scripts/junk-store.sh GOG loginstatus"
+        },
+        {
+          "Id": "GetSetting",
+          "Title": "Get settings",
+          "Type": "GetSettings",
+          "Command": "./scripts/junk-store.sh GOG getsetting"
+        },
+        {
+          "Id": "SaveSetting",
+          "Title": "Set settings",
+          "Type": "SaveSettings",
+          "Command": "./scripts/junk-store.sh GOG savesetting"
+        }
+      ]
+    }
+  },
+  "gog-game-script-actions": {
+    "Type": "ScriptSet",
+    "Content": {
+      "Actions": [
+        {
+          "ActionId": "Update",
+          "Title": "Update Game",
+          "Type": "ScriptAction",
+          "InstalledOnly": "True"
+        },
+        {
+          "ActionId": "Verify",
+          "Title": "Verify Game",
+          "Type": "ScriptAction",
+          "InstalledOnly": "True"
+        },
+        {
+          "ActionId": "Repair",
+          "Title": "Repair Game",
+          "Type": "ScriptAction",
+          "InstalledOnly": "True"
+        },
+        {
+          "ActionId": "UmuIdUpdate",
+          "Title": "Update UMU Id",
+          "Type": "ScriptAction",
+          "InstalledOnly": "True"
+        }
+      ]
+    }
+  },
+  "gog-script-actions": {
+    "Type": "ScriptSet",
+    "Content": {
+      "Actions": [
+        {
+          "ActionId": "Refresh",
+          "Title": "Refresh Games List",
+          "Type": "ScriptAction",
+          "InstalledOnly": "False"
+        }
+      ]
+    }
+  },
+  "gog-exe-actions": {
+    "Type": "ActionSet",
+    "Content": {
+      "SetName": "GOGExeActions",
+      "Actions": [
+        {
+          "Id": "RunBinary",
+          "Title": "Run executable in game folder",
+          "Type": "ScriptAction",
+          "Command": "./scripts/junk-store.sh GOG run-exe"
+        },
+        {
+          "Id": "GetContent",
+          "Title": "Get executable list",
+          "Type": "Content",
+          "Command": "./scripts/junk-store.sh GOG get-exe-list"
+        }
+      ]
+    }
+  },
+  "gog-config-actions": {
+    "Type": "ActionSet",
+    "Content": {
+      "SetName": "GOGPlatformConfigFileActions",
+      "Actions": [
+        {
+          "Id": "GetContent",
+          "Title": "Get the ini files as json",
+          "Type": "IniEditor",
+          "Command": "./scripts/junk-store.sh GOG getplatformconfig"
+        },
+        {
+          "Id": "SaveContent",
+          "Title": "Save the ini files as json",
+          "Type": "IniEditor",
+          "Command": "./scripts/junk-store.sh GOG saveplatformconfig"
+        }
+      ]
+    }
+  },
+  "gog-tab-config-actions": {
+    "Type": "ActionSet",
+    "Content": {
+      "SetName": "GOGTabConfigEditor",
+      "Actions": [
+        {
+          "Id": "GetContent",
+          "Title": "Get the ini files as json",
+          "Type": "IniEditor",
+          "Command": "./scripts/junk-store.sh GOG gettabconfig"
+        },
+        {
+          "Id": "SaveContent",
+          "Title": "Save the ini files as json",
+          "Type": "IniEditor",
+          "Command": "./scripts/junk-store.sh GOG savetabconfig"
+        }
+      ]
+    }
+  },
+  "gog-actions": {
+    "Type": "ActionSet",
+    "Content": {
+      "SetName": "GOGActions",
+      "Actions": [
+        {
+          "Id": "GetContent",
+          "Title": "Get GOG games list",
+          "Type": "GameGrid",
+          "Command": "./scripts/junk-store.sh GOG getgames"
+        },
+        {
+          "Id": "GetGameSize",
+          "Title": "Get game size",
+          "Type": "GameSize",
+          "Command": "./scripts/junk-store.sh GOG getgamesize"
+        },
+        {
+          "Id": "GetDetails",
+          "Title": "Get game details",
+          "Type": "GameDetails",
+          "Command": "./scripts/junk-store.sh GOG getgamedetails"
+        },
+        {
+          "Id": "GetJsonImages",
+          "Title": "Get game images as json",
+          "Type": "GameImages",
+          "Command": "./scripts/junk-store.sh GOG getjsonimages"
+        },
+        {
+          "Id": "Install",
+          "Title": "Install game",
+          "Type": "Install",
+          "Command": "./scripts/junk-store.sh GOG install"
+        },
+        {
+          "Id": "Download",
+          "Title": "Download game",
+          "Type": "Download",
+          "Command": "./scripts/junk-store.sh GOG download"
+        },
+        {
+          "Id": "Update",
+          "Title": "Update game",
+          "Type": "Update",
+          "Command": "./scripts/junk-store.sh GOG update"
+        },
+        {
+          "Id": "Repair",
+          "Title": "Repair game",
+          "Type": "Update",
+          "Command": "./scripts/junk-store.sh GOG repair"
+        },
+        {
+          "Id": "Verify",
+          "Title": "Verify game",
+          "Type": "Verify",
+          "Command": "./scripts/junk-store.sh GOG verify"
+        },
+        {
+          "Id": "Uninstall",
+          "Title": "Uninstall game",
+          "Type": "Uninstall",
+          "Command": "./scripts/junk-store.sh GOG uninstall"
+        },
+        {
+          "Id": "GetProgress",
+          "Title": "Get install progress",
+          "Type": "GetProgress",
+          "Command": "./scripts/junk-store.sh GOG getprogress"
+        },
+        {
+          "Id": "CancelInstall",
+          "Title": "Cancel install",
+          "Type": "CancelInstall",
+          "Command": "./scripts/junk-store.sh GOG cancelinstall"
+        },
+        {
+          "Id": "GetLoginActions",
+          "Title": "Get login status",
+          "Type": "Init",
+          "Command": "./scripts/get-json.py gog-games-login-actions"
+        },
+        {
+          "Id": "GetLaunchOptions",
+          "Title": "Get launch options",
+          "Type": "GetLaunchOptions",
+          "Command": "./scripts/junk-store.sh GOG getlaunchoptions"
+        },
+        {
+          "Id": "GetExeActions",
+          "Title": "Get executable action set to run exe's in game dir",
+          "Type": "Init",
+          "Command": "./scripts/get-json.py gog-exe-actions"
+        },
+        {
+          "Id": "GetGameScriptActions",
+          "Title": "",
+          "Type": "ScriptActions",
+          "Command": "./scripts/get-json.py gog-game-script-actions"
+        },
+        {
+          "Id": "GetScriptActions",
+          "Title": "",
+          "Type": "ScriptActions",
+          "Command": "./scripts/get-json.py gog-script-actions"
+        },
+        {
+          "Id": "GetPlatformConfigFileActions",
+          "Title": "Get config file actions",
+          "Type": "Init",
+          "Command": "./scripts/get-json.py gog-config-actions"
+        },
+        {
+          "Id": "GetTabConfigActions",
+          "Title": "Get GOG tab config file actions",
+          "Type": "Init",
+          "Command": "./scripts/get-json.py gog-tab-config-actions"
+        },
+        {
+          "Id": "Refresh",
+          "Title": "Refresh Games List",
+          "Type": "Refresh",
+          "Command": "./scripts/junk-store.sh GOG refresh"
+        },
+        {
+          "Id": "UmuIdUpdate",
+          "Title": "Update UMU Id",
+          "Type": "Executable",
+          "Command": "./scripts/junk-store.sh GOG update-umu-id"
+        }
+      ]
+    }
+  }
+}

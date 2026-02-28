@@ -1,0 +1,334 @@
+{
+  "junk-store-actions": {
+    "Type": "ActionSet",
+    "Content": {
+      "SetName": "JunkStoreActions",
+      "Actions": [
+        {
+          "Id": "GetAmazonActions",
+          "Title": "Get Amazon store actions",
+          "Type": "Init",
+          "Command": "./scripts/get-json.py amazon-actions"
+        }
+      ]
+    }
+  },
+  "junk-store-actions-no-tabs": {
+    "Type": "ActionSet",
+    "Content": {
+      "SetName": "JunkStoreActionsNoTabs",
+      "Actions": [
+        {
+          "Id": "GetAmazonActions",
+          "Title": "Get Amazon store actions",
+          "Type": "Init",
+          "Command": "./scripts/get-json.py amazon-actions"
+        }
+      ]
+    }
+  },
+  "main-menu-actions": {
+    "Type": "ActionSet",
+    "Content": {
+      "SetName": "MainMenu",
+      "Actions": [
+        {
+          "Id": "GetAmazonActions",
+          "Title": "Get Amazon store actions",
+          "Type": "Init",
+          "Command": "./scripts/get-json.py amazon-actions"
+        }
+      ]
+    }
+  },
+  "junk-store-tabs": {
+    "Type": "StoreTabs",
+    "Content": {
+      "Tabs": [
+        { "Title": "Amazon", "Type": "GameGrid", "ActionId": "GetAmazonActions" }
+      ]
+    }
+  },
+  "amazon-games-login-actions": {
+    "Type": "ActionSet",
+    "Content": {
+      "SetName": "AmazonGamesLoginActions",
+      "Actions": [
+        {
+          "Id": "Login",
+          "Title": "Login",
+          "Type": "Login",
+          "Command": "./scripts/junk-store.sh Amazon login"
+        },
+        {
+          "Id": "LoginLaunchOptions",
+          "Title": "Login",
+          "Type": "Login",
+          "Command": "./scripts/junk-store.sh Amazon login-launch-options"
+        },
+        {
+          "Id": "Logout",
+          "Title": "Logout",
+          "Type": "Logout",
+          "Command": "./scripts/junk-store.sh Amazon logout"
+        },
+        {
+          "Id": "GetContent",
+          "Title": "Status",
+          "Type": "Status",
+          "Command": "./scripts/junk-store.sh Amazon loginstatus"
+        },
+        {
+          "Id": "GetSetting",
+          "Title": "Get settings",
+          "Type": "GetSettings",
+          "Command": "./scripts/junk-store.sh Amazon getsetting"
+        },
+        {
+          "Id": "SaveSetting",
+          "Title": "Set settings",
+          "Type": "SaveSettings",
+          "Command": "./scripts/junk-store.sh Amazon savesetting"
+        }
+      ]
+    }
+  },
+  "amazon-game-script-actions": {
+    "Type": "ScriptSet",
+    "Content": {
+      "Actions": [
+        {
+          "ActionId": "Update",
+          "Title": "Update Game",
+          "Type": "ScriptAction",
+          "InstalledOnly": "True"
+        },
+        {
+          "ActionId": "Verify",
+          "Title": "Verify Game",
+          "Type": "ScriptAction",
+          "InstalledOnly": "True"
+        },
+        {
+          "ActionId": "Repair",
+          "Title": "Repair Game",
+          "Type": "ScriptAction",
+          "InstalledOnly": "True"
+        },
+        {
+          "ActionId": "UmuIdUpdate",
+          "Title": "Update UMU Id",
+          "Type": "ScriptAction",
+          "InstalledOnly": "True"
+        }
+      ]
+    }
+  },
+  "amazon-script-actions": {
+    "Type": "ScriptSet",
+    "Content": {
+      "Actions": [
+        {
+          "ActionId": "Refresh",
+          "Title": "Refresh Games List",
+          "Type": "ScriptAction",
+          "InstalledOnly": "False"
+        }
+      ]
+    }
+  },
+  "amazon-exe-actions": {
+    "Type": "ActionSet",
+    "Content": {
+      "SetName": "AmazonExeActions",
+      "Actions": [
+        {
+          "Id": "RunBinary",
+          "Title": "Run executable in game folder",
+          "Type": "ScriptAction",
+          "Command": "./scripts/junk-store.sh Amazon run-exe"
+        },
+        {
+          "Id": "GetContent",
+          "Title": "Get executable list",
+          "Type": "Content",
+          "Command": "./scripts/junk-store.sh Amazon get-exe-list"
+        }
+      ]
+    }
+  },
+  "amazon-config-actions": {
+    "Type": "ActionSet",
+    "Content": {
+      "SetName": "AmazonPlatformConfigFileActions",
+      "Actions": [
+        {
+          "Id": "GetContent",
+          "Title": "Get the ini files as json",
+          "Type": "IniEditor",
+          "Command": "./scripts/junk-store.sh Amazon getplatformconfig"
+        },
+        {
+          "Id": "SaveContent",
+          "Title": "Save the ini files as json",
+          "Type": "IniEditor",
+          "Command": "./scripts/junk-store.sh Amazon saveplatformconfig"
+        }
+      ]
+    }
+  },
+  "amazon-tab-config-actions": {
+    "Type": "ActionSet",
+    "Content": {
+      "SetName": "AmazonTabConfigEditor",
+      "Actions": [
+        {
+          "Id": "GetContent",
+          "Title": "Get the ini files as json",
+          "Type": "IniEditor",
+          "Command": "./scripts/junk-store.sh Amazon gettabconfig"
+        },
+        {
+          "Id": "SaveContent",
+          "Title": "Save the ini files as json",
+          "Type": "IniEditor",
+          "Command": "./scripts/junk-store.sh Amazon savetabconfig"
+        }
+      ]
+    }
+  },
+  "amazon-actions": {
+    "Type": "ActionSet",
+    "Content": {
+      "SetName": "AmazonActions",
+      "Actions": [
+        {
+          "Id": "GetContent",
+          "Title": "Get Amazon games list",
+          "Type": "GameGrid",
+          "Command": "./scripts/junk-store.sh Amazon getgames"
+        },
+        {
+          "Id": "GetGameSize",
+          "Title": "Get game size",
+          "Type": "GameSize",
+          "Command": "./scripts/junk-store.sh Amazon getgamesize"
+        },
+        {
+          "Id": "GetDetails",
+          "Title": "Get game details",
+          "Type": "GameDetails",
+          "Command": "./scripts/junk-store.sh Amazon getgamedetails"
+        },
+        {
+          "Id": "GetJsonImages",
+          "Title": "Get game images as json",
+          "Type": "GameImages",
+          "Command": "./scripts/junk-store.sh Amazon getjsonimages"
+        },
+        {
+          "Id": "Install",
+          "Title": "Install game",
+          "Type": "Install",
+          "Command": "./scripts/junk-store.sh Amazon install"
+        },
+        {
+          "Id": "Download",
+          "Title": "Download game",
+          "Type": "Download",
+          "Command": "./scripts/junk-store.sh Amazon download"
+        },
+        {
+          "Id": "Update",
+          "Title": "Update game",
+          "Type": "Update",
+          "Command": "./scripts/junk-store.sh Amazon update"
+        },
+        {
+          "Id": "Repair",
+          "Title": "Repair game",
+          "Type": "Update",
+          "Command": "./scripts/junk-store.sh Amazon repair"
+        },
+        {
+          "Id": "Verify",
+          "Title": "Verify game",
+          "Type": "Verify",
+          "Command": "./scripts/junk-store.sh Amazon verify"
+        },
+        {
+          "Id": "Uninstall",
+          "Title": "Uninstall game",
+          "Type": "Uninstall",
+          "Command": "./scripts/junk-store.sh Amazon uninstall"
+        },
+        {
+          "Id": "GetProgress",
+          "Title": "Get install progress",
+          "Type": "GetProgress",
+          "Command": "./scripts/junk-store.sh Amazon getprogress"
+        },
+        {
+          "Id": "CancelInstall",
+          "Title": "Cancel install",
+          "Type": "CancelInstall",
+          "Command": "./scripts/junk-store.sh Amazon cancelinstall"
+        },
+        {
+          "Id": "GetLoginActions",
+          "Title": "Get login status",
+          "Type": "Init",
+          "Command": "./scripts/get-json.py amazon-games-login-actions"
+        },
+        {
+          "Id": "GetLaunchOptions",
+          "Title": "Get launch options",
+          "Type": "GetLaunchOptions",
+          "Command": "./scripts/junk-store.sh Amazon getlaunchoptions"
+        },
+        {
+          "Id": "GetExeActions",
+          "Title": "Get executable action set to run exe's in game dir",
+          "Type": "Init",
+          "Command": "./scripts/get-json.py amazon-exe-actions"
+        },
+        {
+          "Id": "GetGameScriptActions",
+          "Title": "",
+          "Type": "ScriptActions",
+          "Command": "./scripts/get-json.py amazon-game-script-actions"
+        },
+        {
+          "Id": "GetScriptActions",
+          "Title": "",
+          "Type": "ScriptActions",
+          "Command": "./scripts/get-json.py amazon-script-actions"
+        },
+        {
+          "Id": "GetPlatformConfigFileActions",
+          "Title": "Get config file actions",
+          "Type": "Init",
+          "Command": "./scripts/get-json.py amazon-config-actions"
+        },
+        {
+          "Id": "GetTabConfigActions",
+          "Title": "Get Amazon tab config file actions",
+          "Type": "Init",
+          "Command": "./scripts/get-json.py amazon-tab-config-actions"
+        },
+        {
+          "Id": "Refresh",
+          "Title": "Refresh Games List",
+          "Type": "Refresh",
+          "Command": "./scripts/junk-store.sh Amazon refresh"
+        },
+        {
+          "Id": "UmuIdUpdate",
+          "Title": "Update UMU Id",
+          "Type": "Executable",
+          "Command": "./scripts/junk-store.sh Amazon update-umu-id"
+        }
+      ]
+    }
+  }
+}

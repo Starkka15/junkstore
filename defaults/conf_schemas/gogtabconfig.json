@@ -1,0 +1,75 @@
+{
+  "Sections": [
+    {
+      "Name": "GOG",
+      "Visible": true,
+      "Description": "Settings specific to GOG",
+      "ModeLevel": 0,
+      "Options": [
+        {
+          "Key": "ENABLE_UMU_FIXES",
+          "Label": "Enable UMU Fixes",
+          "Description": "Enables UMU fixes for GOG games",
+          "DefaultValue": "true",
+          "Value": "true",
+          "Type": "Boolean",
+          "Min": 0,
+          "Max": 0,
+          "ModeLevel": 2,
+          "Parents": [],
+          "EnumValues": []
+        },
+        {
+          "Key": "InstallLocation",
+          "Label": "Install Location",
+          "Description": "Set the install location for GOG games. This will be used when installing new games.",
+          "DefaultValue": "SSD",
+          "Value": "SSD",
+          "Type": "Enum",
+          "Min": 0,
+          "Max": 0,
+          "ModeLevel": 0,
+          "Parents": [],
+          "EnumValues": [
+            {
+              "Key": "SSD",
+              "Description": "Internal SSD"
+            },
+            {
+              "Key": "MicroSD",
+              "Description": "Micro SD Card"
+            }
+          ]
+        },
+        {
+          "Key": "Language",
+          "Label": "Language",
+          "Description": "Language for GOG game downloads",
+          "DefaultValue": "en",
+          "Value": "en",
+          "Type": "Enum",
+          "Min": 0,
+          "Max": 0,
+          "ModeLevel": 0,
+          "Parents": [],
+          "EnumValues": [
+            { "Key": "en", "Description": "English" },
+            { "Key": "de", "Description": "German" },
+            { "Key": "fr", "Description": "French" },
+            { "Key": "es", "Description": "Spanish" },
+            { "Key": "it", "Description": "Italian" },
+            { "Key": "pt", "Description": "Portuguese" },
+            { "Key": "ru", "Description": "Russian" },
+            { "Key": "pl", "Description": "Polish" },
+            { "Key": "nl", "Description": "Dutch" },
+            { "Key": "zh", "Description": "Chinese" },
+            { "Key": "ja", "Description": "Japanese" },
+            { "Key": "ko", "Description": "Korean" }
+          ]
+        }
+      ]
+    }
+  ],
+  "Autoexec": "",
+  "AutoexecEnabled": false
+}
