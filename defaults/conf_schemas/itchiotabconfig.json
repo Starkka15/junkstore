@@ -1,0 +1,49 @@
+{
+  "Sections": [
+    {
+      "Name": "Itchio",
+      "Visible": true,
+      "Description": "Settings specific to itch.io Games",
+      "ModeLevel": 0,
+      "Options": [
+        {
+          "Key": "ENABLE_UMU_FIXES",
+          "Label": "Enable UMU Fixes",
+          "Description": "Enables UMU fixes for itch.io Games",
+          "DefaultValue": "true",
+          "Value": "true",
+          "Type": "Boolean",
+          "Min": 0,
+          "Max": 0,
+          "ModeLevel": 2,
+          "Parents": [],
+          "EnumValues": []
+        },
+        {
+          "Key": "InstallLocation",
+          "Label": "Install Location",
+          "Description": "Set the install location for itch.io Games. This will be used when installing new games.",
+          "DefaultValue": "SSD",
+          "Value": "SSD",
+          "Type": "Enum",
+          "Min": 0,
+          "Max": 0,
+          "ModeLevel": 0,
+          "Parents": [],
+          "EnumValues": [
+            {
+              "Key": "SSD",
+              "Description": "Internal SSD"
+            },
+            {
+              "Key": "MicroSD",
+              "Description": "Micro SD Card"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "Autoexec": "",
+  "AutoexecEnabled": false
+}
