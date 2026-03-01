@@ -17,6 +17,10 @@ This fork extends the original with community-built store integrations, bringing
 | **Amazon Games** | Nile | Community extension |
 | **itch.io** | itch.io API | Community extension |
 
+### A Note on GOG
+
+The official Junk-Store project offers its own GOG integration via [Patreon](https://www.patreon.com/junkstore) or [Ko-fi](https://ko-fi.com/junkrunner). The GOG extension in this fork is a **separate, independently-built** implementation and is not the same as the official one. If you want the officially supported GOG experience, consider supporting the original project.
+
 ### Setup Notes
 
 - **Epic Games** — Works out of the box. Log in from the plugin.
