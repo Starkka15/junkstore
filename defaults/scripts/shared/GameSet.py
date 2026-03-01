@@ -124,9 +124,13 @@ class GameSet:
         if "SortingTitle" not in columns:
             c.execute("ALTER TABLE Game ADD COLUMN SortingTitle TEXT")
         conn.commit()
-   
 
-   
+        c.execute("PRAGMA table_info(Game)")
+        columns = [column[1] for column in c.fetchall()]
+        if "CloudSaveAutoSync" not in columns:
+            c.execute("ALTER TABLE Game ADD COLUMN CloudSaveAutoSync INTEGER DEFAULT 0")
+        conn.commit()
+
         conn.close()
 
 

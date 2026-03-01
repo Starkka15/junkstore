@@ -132,6 +132,12 @@
           "Title": "Upload Cloud Saves",
           "Type": "ScriptAction",
           "InstalledOnly": "True"
+        },
+        {
+          "ActionId": "ToggleAutoSync",
+          "Title": "Toggle Cloud Save Auto-Sync",
+          "Type": "ScriptAction",
+          "InstalledOnly": "True"
         }
       ]
     }
@@ -351,6 +357,12 @@
           "Title": "Upload saves",
           "Type": "UploadSaves",
           "Command": "./scripts/junk-store.sh GOG upload-saves"
+        },
+        {
+          "Id": "ToggleAutoSync",
+          "Title": "Toggle auto-sync",
+          "Type": "ToggleAutoSync",
+          "Command": "./scripts/junk-store.sh GOG toggle-autosync"
         }
       ]
     }

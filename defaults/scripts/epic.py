@@ -470,6 +470,27 @@ class Epic(GamesDb.GamesDb):
 
         return json.dumps({'Type': 'ProgressUpdate', 'Content': last_progress_update})
 
+    def toggle_autosync(self, game_id):
+        conn = self.get_connection()
+        c = conn.cursor()
+        c.execute("SELECT CloudSaveAutoSync FROM Game WHERE ShortName=?", (game_id,))
+        result = c.fetchone()
+        current = result[0] if result and result[0] else 0
+        new_val = 0 if current else 1
+        c.execute("UPDATE Game SET CloudSaveAutoSync=? WHERE ShortName=?", (new_val, game_id))
+        conn.commit()
+        conn.close()
+        state = "enabled" if new_val else "disabled"
+        return json.dumps({'Type': 'Success', 'Content': {'Message': f'Cloud save auto-sync {state}'}})
+
+    def get_autosync_enabled(self, game_id):
+        conn = self.get_connection()
+        c = conn.cursor()
+        c.execute("SELECT CloudSaveAutoSync FROM Game WHERE ShortName=?", (game_id,))
+        result = c.fetchone()
+        conn.close()
+        return '1' if result and result[0] else '0'
+
     def get_proton_command(self, cmd):
         match = re.search(r'waitforexitandrun -- (.*?) waitforexitandrun', cmd)
         if match:

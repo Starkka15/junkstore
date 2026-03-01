@@ -45,6 +45,12 @@ class ItchioArgs(GameSet.GenericArgs):
             '--install-dir', help='Install directory for downloads')
         self.parser.add_argument(
             '--detect-executable', help='Detect executable in installed game directory')
+        self.parser.add_argument(
+            '--browse-games', nargs='*', help='Browse/search itch.io games')
+        self.parser.add_argument(
+            '--add-browse-to-library', help='Add a browsed game to local library by game ID')
+        self.parser.add_argument(
+            '--get-browse-details', help='Get details for a browsed game by ID')
 
     def parseArgs(self):
         super().parseArgs()
@@ -91,6 +97,13 @@ class ItchioArgs(GameSet.GenericArgs):
             if self.args.get_game_size:
                 print(self.gameSet.get_game_size(
                     self.args.get_game_size[0], self.args.get_game_size[1]))
+            if self.args.browse_games is not None:
+                filter_text = self.args.browse_games[0] if self.args.browse_games else ''
+                print(self.gameSet.browse_games(filter_text))
+            if self.args.add_browse_to_library:
+                print(self.gameSet.add_browse_to_library(self.args.add_browse_to_library))
+            if self.args.get_browse_details:
+                print(self.gameSet.get_browse_details(self.args.get_browse_details))
             if not any(vars(self.args).values()):
                 self.parser.print_help()
         except itchio.CmdException as e:

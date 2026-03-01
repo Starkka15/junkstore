@@ -48,6 +48,10 @@ class EpicArgs(GameSet.GenericArgs):
             '--flush-cache', help='Flush cache' , action='store_true')
         self.parser.add_argument(
             '--get-save-path', nargs='+', help='Get resolved save path: game_id [steam_client_id]')
+        self.parser.add_argument(
+            '--toggle-autosync', help='Toggle cloud save auto-sync')
+        self.parser.add_argument(
+            '--get-autosync', help='Check if auto-sync is enabled')
 
     def parseArgs(self):
         super().parseArgs()
@@ -98,6 +102,10 @@ class EpicArgs(GameSet.GenericArgs):
                 steam_id = self.args.get_save_path[1] if len(self.args.get_save_path) > 1 else None
                 print(self.gameSet.get_save_path(
                     self.args.get_save_path[0], steam_id))
+            if self.args.toggle_autosync:
+                print(self.gameSet.toggle_autosync(self.args.toggle_autosync))
+            if self.args.get_autosync:
+                print(self.gameSet.get_autosync_enabled(self.args.get_autosync))
             if not any(vars(self.args).values()):
                 self.parser.print_help()
         except epic.CmdException as e:

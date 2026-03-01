@@ -48,6 +48,10 @@ class GOGArgs(GameSet.GenericArgs):
             '--skip-upload', help='Skip uploading saves', action='store_true')
         self.parser.add_argument(
             '--skip-download', help='Skip downloading saves', action='store_true')
+        self.parser.add_argument(
+            '--toggle-autosync', help='Toggle cloud save auto-sync')
+        self.parser.add_argument(
+            '--get-autosync', help='Check if auto-sync is enabled')
 
     def parseArgs(self):
         super().parseArgs()
@@ -101,6 +105,10 @@ class GOGArgs(GameSet.GenericArgs):
                     self.args.sync_saves,
                     skip_upload=self.args.skip_upload,
                     skip_download=self.args.skip_download)
+            if self.args.toggle_autosync:
+                print(self.gameSet.toggle_autosync(self.args.toggle_autosync))
+            if self.args.get_autosync:
+                print(self.gameSet.get_autosync_enabled(self.args.get_autosync))
             if not any(vars(self.args).values()):
                 self.parser.print_help()
         except gog.CmdException as e:

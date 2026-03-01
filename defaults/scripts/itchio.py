@@ -13,6 +13,7 @@ import stat
 import struct
 import urllib.request
 import urllib.error
+import html as html_module
 
 import GamesDb
 from datetime import datetime, timedelta
@@ -164,7 +165,7 @@ class Itchio(GamesDb.GamesDb):
         c.execute("SELECT ManualPath FROM Game WHERE ShortName=?", (game_id,))
         result = c.fetchone()
         conn.close()
-        if result and result[0]:
+        if result and result[0] and result[0].isdigit():
             return result[0]
         return None
 
@@ -466,6 +467,14 @@ class Itchio(GamesDb.GamesDb):
                 platform_type = 'windows'
                 print(f"Found .exe file: {exe_relative}", file=sys.stderr)
 
+        # 5. Scan for index.html (HTML5 web game)
+        if not exe_relative:
+            html_file = self._find_index_html(game_dir)
+            if html_file:
+                exe_relative = os.path.relpath(html_file, game_dir)
+                platform_type = 'html'
+                print(f"Found HTML5 game: {exe_relative}", file=sys.stderr)
+
         if exe_relative:
             c2 = conn.cursor()
             c2.execute("UPDATE Game SET ApplicationPath=?, RootFolder=?, ConfigurationPath=? WHERE ShortName=?",
@@ -591,6 +600,16 @@ class Itchio(GamesDb.GamesDb):
         sh_files.sort(key=sort_key)
         return sh_files
 
+    def _find_index_html(self, game_dir):
+        """Find index.html in game directory (HTML5 web game)."""
+        for root, dirs, files in os.walk(game_dir):
+            if 'index.html' in files:
+                return os.path.join(root, 'index.html')
+            depth = root.replace(game_dir, '').count(os.sep)
+            if depth >= 3:
+                dirs.clear()
+        return None
+
     def _find_exe_files(self, game_dir):
         """Find .exe files in game directory."""
         exe_files = []
@@ -626,6 +645,212 @@ class Itchio(GamesDb.GamesDb):
         else:
             install_dir = os.environ.get('INSTALL_DIR', os.path.expanduser('~/Games/itchio/'))
             print(os.path.join(install_dir, f"itchio_{game_id}"))
+
+    def _fetch_html(self, url):
+        """Fetch a URL and return the response body as string."""
+        req = urllib.request.Request(url, headers={
+            'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36'})
+        response = urllib.request.urlopen(req, timeout=15)
+        return response.read().decode()
+
+    def _fetch_browse_json(self, url):
+        """Fetch an itch.io browse page with format=json and return the HTML content."""
+        data = json.loads(self._fetch_html(url))
+        return data.get('content', '')
+
+    def _parse_game_cells(self, page_html, seen_ids=None):
+        """Parse game cells from itch.io HTML. Returns list of game dicts and updated seen_ids set."""
+        if seen_ids is None:
+            seen_ids = set()
+        games = []
+        for match in re.finditer(
+            r'<div[^>]*data-game_id="(\d+)"[^>]*>(.*?)</div></div></div>',
+            page_html, re.DOTALL
+        ):
+            game_id = match.group(1)
+            if game_id in seen_ids:
+                continue
+            seen_ids.add(game_id)
+            cell_html = match.group(2)
+
+            title_match = re.search(r'class="title game_link"[^>]*>([^<]+)<', cell_html)
+            title = html_module.unescape(title_match.group(1).strip()) if title_match else ''
+
+            img_match = re.search(r'data-lazy_src="([^"]+)"', cell_html)
+            if not img_match:
+                img_match = re.search(r'<img[^>]*src="([^"]+)"', cell_html)
+            cover = img_match.group(1) if img_match else ''
+
+            # Extract price tag
+            price_match = re.search(r'class="price_value">([^<]*)<', cell_html)
+            price = price_match.group(1).strip() if price_match else ''
+
+            # Build display title with price indicator
+            if price == '$0' or price == '':
+                prefix = '[FREE] '
+            elif 'demo' in title.lower():
+                prefix = '[DEMO] '
+            else:
+                prefix = f'[{price}] '
+            display_title = prefix + title
+
+            games.append({
+                'ID': 0,
+                'Name': display_title,
+                'ShortName': game_id,
+                'SteamClientID': '',
+                'Images': [cover] if cover else []
+            })
+        return games, seen_ids
+
+    def browse_games(self, filter_text=''):
+        """Browse/search itch.io games including NSFW content."""
+        seen_ids = set()
+        all_games = []
+
+        if filter_text:
+            # Search: SFW results from /search + NSFW client-side title filter
+            search_html = self._fetch_html(
+                f'https://itch.io/search?q={urllib.parse.quote(filter_text)}')
+            games, seen_ids = self._parse_game_cells(search_html, seen_ids)
+            all_games.extend(games)
+
+            # Also fetch NSFW browse page and filter by title client-side
+            try:
+                nsfw_html = self._fetch_browse_json(
+                    'https://itch.io/games/tag-nsfw?format=json')
+                nsfw_games, seen_ids = self._parse_game_cells(nsfw_html, seen_ids)
+                filter_lower = filter_text.lower()
+                for g in nsfw_games:
+                    if filter_lower in g['Name'].lower():
+                        all_games.append(g)
+            except Exception:
+                pass
+        else:
+            # Browse: merge SFW + NSFW feeds
+            sfw_html = self._fetch_browse_json('https://itch.io/games?format=json')
+            games, seen_ids = self._parse_game_cells(sfw_html, seen_ids)
+            all_games.extend(games)
+
+            try:
+                nsfw_html = self._fetch_browse_json(
+                    'https://itch.io/games/tag-nsfw?format=json')
+                nsfw_games, seen_ids = self._parse_game_cells(nsfw_html, seen_ids)
+                all_games.extend(nsfw_games)
+            except Exception:
+                pass
+
+        return json.dumps({
+            'Type': 'GameGrid',
+            'Content': {
+                'NeedsLogin': False,
+                'Games': all_games,
+                'storeURL': 'https://itch.io/'
+            }
+        })
+
+    def get_browse_details(self, game_id):
+        """Get details for a browsed game. Adds to library first if needed."""
+        conn = self.get_connection()
+        c = conn.cursor()
+        c.execute("SELECT id FROM Game WHERE ShortName=?", (game_id,))
+        if c.fetchone() is None:
+            conn.close()
+            # Add to library first
+            self.add_browse_to_library(game_id)
+        else:
+            conn.close()
+        # Now return details using the standard method
+        result = self.get_game_data(game_id, '', False, 'Windows', 'Proton', 'null')
+        if result is None:
+            # Fallback minimal response
+            return json.dumps({'Type': 'GameDetails', 'Content': {
+                'Name': f'itch.io Game {game_id}',
+                'Description': '<p>Could not load game details.</p>',
+                'ShortName': game_id,
+                'SteamClientID': '',
+                'HasDosConfig': False,
+                'HasBatFiles': False,
+                'Editors': [],
+                'Images': []
+            }}, indent=2)
+        return result
+
+    def add_browse_to_library(self, game_id):
+        """Scrape an itch.io game page by ID and add it to the local library."""
+        # Check if already in DB
+        conn = self.get_connection()
+        c = conn.cursor()
+        c.execute("SELECT id FROM Game WHERE ShortName=?", (game_id,))
+        if c.fetchone() is not None:
+            conn.close()
+            return json.dumps({'Type': 'Success', 'Content': {'Message': 'Game already in your library. Go to the itch.io tab to download it.'}})
+
+        # Fetch game metadata - try API first, fall back to scraping the game page
+        title = f'itch.io Game {game_id}'
+        description = ''
+        cover_url = ''
+        page_url = ''
+
+        try:
+            api_key = self._get_api_key()
+            if api_key:
+                req = urllib.request.Request(f'https://itch.io/api/1/{api_key}/game/{game_id}',
+                                             headers={'User-Agent': 'Mozilla/5.0'})
+                resp = urllib.request.urlopen(req, timeout=10)
+                api_data = json.loads(resp.read().decode())
+                game_info = api_data.get('game', {})
+                title = game_info.get('title', title)
+                description = game_info.get('short_text', '')
+                cover_url = game_info.get('cover_url', '')
+                page_url = game_info.get('url', '')
+        except Exception as e:
+            print(f"API lookup failed for game {game_id}: {e}", file=sys.stderr)
+
+        # If API didn't give us a real title, use itch.io embed page (no auth needed)
+        if title == f'itch.io Game {game_id}':
+            try:
+                embed_url = f'https://itch.io/embed/{game_id}'
+                req = urllib.request.Request(embed_url, headers={'User-Agent': 'Mozilla/5.0'})
+                resp = urllib.request.urlopen(req, timeout=10)
+                embed_html = resp.read().decode()
+                t = re.search(r'<title>([^<]+)</title>', embed_html)
+                if t:
+                    raw_title = html_module.unescape(t.group(1))
+                    raw_title = re.sub(r'\s*-\s*itch\.io$', '', raw_title)
+                    raw_title = re.sub(r'\s+by\s+.+$', '', raw_title)
+                    title = raw_title
+                img = re.search(r'<img[^>]*src="(https://img\.itch\.zone/[^"]+)"', embed_html)
+                if img:
+                    cover_url = img.group(1)
+                desc = re.search(r'class="widget_text_block">([^<]+)<', embed_html)
+                if desc:
+                    description = html_module.unescape(desc.group(1).strip())
+            except Exception as e:
+                print(f"Embed page lookup failed for game {game_id}: {e}", file=sys.stderr)
+
+        vals = [
+            title, description, "", page_url, "", "", "Itchio",
+            game_id, "", "", "", "",
+            "", "", "", "", game_id,
+        ]
+        cols_with_pk = [
+            "Title", "Notes", "ApplicationPath", "ManualPath",
+            "Publisher", "RootFolder", "Source", "DatabaseID",
+            "Genre", "ConfigurationPath", "Developer", "ReleaseDate",
+            "Size", "InstallPath", "UmuId", "SteamClientID", "ShortName"
+        ]
+        placeholders = ', '.join(['?' for _ in range(len(cols_with_pk))])
+        tmp = f"INSERT INTO Game ({', '.join(cols_with_pk)}) VALUES ({placeholders})"
+        c.execute(tmp, vals)
+        game_db_id = c.lastrowid
+        if cover_url:
+            c.execute(
+                "INSERT INTO Images (GameID, ImagePath, FileName, SortOrder, Type) VALUES (?, ?, ?, ?, ?)",
+                (game_db_id, cover_url, '', 0, 'vertical_cover'))
+        conn.commit()
+        conn.close()
+        return json.dumps({'Type': 'Success', 'Content': {'Message': f'{title} added to your library. Go to the itch.io tab to download it.'}})
 
     def get_login_status(self, flush_cache=False):
         cache_key = "itchio-login"
@@ -697,8 +922,13 @@ class Itchio(GamesDb.GamesDb):
         if game and game['RootFolder'] and game['ApplicationPath']:
             root_dir = game['RootFolder']
             working_dir = os.path.join(root_dir, game['WorkingDir']).replace("\\", "/") if game['WorkingDir'] else root_dir
-            game_exe = os.path.join(root_dir, game['ApplicationPath']).replace("\\", "/")
-            is_windows = (game['ConfigurationPath'] == 'windows')
+            if game['ConfigurationPath'] == 'html':
+                # HTML5 game — set exe to index.html path, launcher handles opening in browser
+                game_exe = os.path.join(root_dir, game['ApplicationPath']).replace("\\", "/")
+                is_windows = False
+            else:
+                game_exe = os.path.join(root_dir, game['ApplicationPath']).replace("\\", "/")
+                is_windows = (game['ConfigurationPath'] == 'windows')
         else:
             install_dir = os.environ.get('INSTALL_DIR', os.path.expanduser('~/Games/itchio/'))
             game_exe = ""

@@ -118,7 +118,13 @@ CMD=${*}
 echo "CMD: ${CMD}"
 
 
-download-saves
+pushd "${DECKY_PLUGIN_DIR}" > /dev/null
+AUTOSYNC=$($EPICCONF --get-autosync "$ID" --dbfile $DBFILE 2>/dev/null)
+popd > /dev/null
+
+if [[ "${AUTOSYNC}" == "1" ]]; then
+    download-saves
+fi
 
 
 QUOTED_ARGS=""
@@ -216,7 +222,9 @@ eval "$(echo -e "${ADVANCED_VARIABLES}")" &>> "${DECKY_PLUGIN_LOG_DIR}/${ID}.log
 eval "$(echo -e "$QUOTED_ARGS")"  &>> "${DECKY_PLUGIN_LOG_DIR}/${ID}.log"
 # eval "${CMD:q} ${ARGS}"  &> "${DECKY_PLUGIN_LOG_DIR}/${ID}.log"
 
-upload-saves
+if [[ "${AUTOSYNC}" == "1" ]]; then
+    upload-saves
+fi
 
 
 # echo "#!/usr/bin/env bash" > run.sh

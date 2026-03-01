@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Register actions with the junk-store.sh script
-ACTIONS+=("install-overlay" "update-overlay" "remove-overlay" "registry-fix" "update-umu-id" "download-saves" "upload-saves")
+ACTIONS+=("install-overlay" "update-overlay" "remove-overlay" "registry-fix" "update-umu-id" "download-saves" "upload-saves" "toggle-autosync")
 
 # Register Epic as a platform with the junk-store.sh script
 PLATFORMS+=("Epic")
@@ -192,6 +192,10 @@ function Epic_move(){
     echo $! > "${DECKY_PLUGIN_LOG_DIR}/${1}.pid"
     echo "{\"Type\": \"Success\", \"Content\": {\"Message\": \"${1} moved to ${INSTALL_DIR}\"}}"
 
+}
+function Epic_toggle-autosync(){
+    TEMP=$($EPICCONF --toggle-autosync "${1}" --dbfile $DBFILE)
+    echo "$TEMP"
 }
 function Epic_update-umu-id(){
     TEMP=$($EPICCONF --update-umu-id "${1}" egs --dbfile $DBFILE)

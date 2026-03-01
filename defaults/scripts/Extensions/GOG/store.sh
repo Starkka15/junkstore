@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Register actions with the junk-store.sh script
-ACTIONS+=("update-umu-id" "download-saves" "upload-saves")
+ACTIONS+=("update-umu-id" "download-saves" "upload-saves" "toggle-autosync")
 
 # Register GOG as a platform with the junk-store.sh script
 PLATFORMS+=("GOG")
@@ -179,6 +179,10 @@ function GOG_logout(){
     GOG_loginstatus --flush-cache
 }
 
+function GOG_toggle-autosync(){
+    TEMP=$($GOGCONF --toggle-autosync "${1}" --dbfile $DBFILE)
+    echo "$TEMP"
+}
 function GOG_update-umu-id(){
     TEMP=$($GOGCONF --update-umu-id "${1}" gog --dbfile $DBFILE)
     echo "{\"Type\": \"Success\", \"Content\": {\"Message\": \"Umu Id updated\"}}"

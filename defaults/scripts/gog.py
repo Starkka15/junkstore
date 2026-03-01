@@ -418,6 +418,27 @@ class GOG(GamesDb.GamesDb):
     # [PROGRESS] INFO: = Downloaded: 450.50 MiB, Written: 450.50 MiB
     # + Download - 45.50 MiB/s (raw: ...)
 
+    def toggle_autosync(self, game_id):
+        conn = self.get_connection()
+        c = conn.cursor()
+        c.execute("SELECT CloudSaveAutoSync FROM Game WHERE ShortName=?", (game_id,))
+        result = c.fetchone()
+        current = result[0] if result and result[0] else 0
+        new_val = 0 if current else 1
+        c.execute("UPDATE Game SET CloudSaveAutoSync=? WHERE ShortName=?", (new_val, game_id))
+        conn.commit()
+        conn.close()
+        state = "enabled" if new_val else "disabled"
+        return json.dumps({'Type': 'Success', 'Content': {'Message': f'Cloud save auto-sync {state}'}})
+
+    def get_autosync_enabled(self, game_id):
+        conn = self.get_connection()
+        c = conn.cursor()
+        c.execute("SELECT CloudSaveAutoSync FROM Game WHERE ShortName=?", (game_id,))
+        result = c.fetchone()
+        conn.close()
+        return '1' if result and result[0] else '0'
+
     def get_last_progress_update(self, file_path):
         progress_re = re.compile(
             r"= Progress: (\d+\.\d+) (\d+)/(\d+), Running for: (\d+:\d+:\d+), ETA: (\d+:\d+:\d+)\n\[PROGRESS\] INFO: = Downloaded: (\d+\.\d+) MiB, Written: (\d+\.\d+) MiB")

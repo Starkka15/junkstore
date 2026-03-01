@@ -151,4 +151,13 @@ else
 fi
 
 eval "$(echo -e "${ADVANCED_VARIABLES}")" &>> "${DECKY_PLUGIN_LOG_DIR}/${ID}.log"
-eval "$(echo -e "$QUOTED_ARGS")"  &>> "${DECKY_PLUGIN_LOG_DIR}/${ID}.log"
+
+# HTML5 games: open index.html in browser instead of executing directly
+if echo "$QUOTED_ARGS" | grep -qi '\.html"'; then
+    # Extract the html file path from the quoted args
+    HTML_FILE=$(echo "$QUOTED_ARGS" | sed 's/.*"\(.*\.html\)".*/\1/')
+    echo "HTML5 game detected, opening in browser: ${HTML_FILE}" &>> "${DECKY_PLUGIN_LOG_DIR}/${ID}.log"
+    xdg-open "file://${HTML_FILE}" &>> "${DECKY_PLUGIN_LOG_DIR}/${ID}.log"
+else
+    eval "$(echo -e "$QUOTED_ARGS")"  &>> "${DECKY_PLUGIN_LOG_DIR}/${ID}.log"
+fi
