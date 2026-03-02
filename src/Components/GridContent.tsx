@@ -1,4 +1,4 @@
-import { DialogButton, Focusable, Menu, MenuItem, Navigation, ServerAPI, Spinner, TextField, gamepadTabbedPageClasses, showContextMenu, showModal } from "decky-frontend-lib";
+import { DialogButton, Focusable, Menu, MenuItem, Navigation, ProgressBar, ServerAPI, Spinner, TextField, gamepadTabbedPageClasses, showContextMenu, showModal } from "decky-frontend-lib";
 import { ContentResult, ContentType, ExecuteArgs, GameData, GameDataList, MenuAction, ScriptActions } from "../Types/Types";
 import { Dispatch, SetStateAction, VFC, memo, useEffect, useState } from "react";
 import GameGridItem from './GameGridItem';
@@ -9,6 +9,7 @@ import { LoginContent } from './LoginContent';
 import { executeAction } from '../Utils/executeAction';
 import { ConfEditor } from '../ConfEditor';
 import { FaStore } from "react-icons/fa6";
+import { installQueue, QueueState } from '../Utils/installQueue';
 
 export const contentTabsContainerClass = 'content-tabs-container';
 export const gridContentContainerClass = 'grid-content-container';
@@ -40,6 +41,33 @@ export const GridContent: VFC<GridContentProps> = ({ content, serverAPI, initAct
     const [installedFilterLoading, setInstalledLoading] = useState(false);
     const [scriptActions, setScriptActions] = useState<MenuAction[] | null>();
     const [filter, setFilter] = useState(argsCache.filter);
+    const [selectMode, setSelectMode] = useState(false);
+    const [selectedGames, setSelectedGames] = useState<Set<string>>(new Set());
+    const [queueState, setQueueState] = useState<QueueState>(installQueue.getState());
+
+    useEffect(() => {
+        installQueue.setServerAPI(serverAPI);
+        return installQueue.subscribe(setQueueState);
+    }, [serverAPI]);
+
+    const toggleSelection = (game: GameData) => {
+        // Only allow selecting uninstalled games
+        if (game.SteamClientID) return;
+        setSelectedGames(prev => {
+            const next = new Set(prev);
+            if (next.has(game.ShortName)) next.delete(game.ShortName);
+            else next.add(game.ShortName);
+            return next;
+        });
+    };
+
+    const startBatchInstall = () => {
+        const games = content.Games?.filter(g => selectedGames.has(g.ShortName)) ?? [];
+        games.forEach(g => installQueue.add(g.ShortName, g.Name, initActionSet));
+        setSelectMode(false);
+        setSelectedGames(new Set());
+        installQueue.start();
+    };
 
     useEffect(() => {
         (async () => {
@@ -175,7 +203,55 @@ export const GridContent: VFC<GridContentProps> = ({ content, serverAPI, initAct
                         style={{ width: "48px", minWidth: 'initial', padding: 'initial' }}>
                         <FaStore />
                     </DialogButton>}
+                <DialogButton
+                    onClick={() => {
+                        setSelectMode(!selectMode);
+                        if (selectMode) setSelectedGames(new Set());
+                    }}
+                    style={{
+                        width: "48px", minWidth: 'initial', padding: 'initial',
+                        ...(selectMode ? { backgroundColor: '#1a9fff' } : {})
+                    }}
+                >
+                    <FaRegCheckCircle style={{ verticalAlign: 'middle' }} />
+                </DialogButton>
             </Focusable>
+            {selectMode && selectedGames.size > 0 && (
+                <div style={{ display: 'flex', gap: '10px', marginTop: '8px', alignItems: 'center' }}>
+                    <DialogButton onClick={startBatchInstall} style={{ flex: 1 }}>
+                        Install Selected ({selectedGames.size})
+                    </DialogButton>
+                    <DialogButton onClick={() => setSelectedGames(new Set())}
+                        style={{ width: "120px", minWidth: 'initial' }}>
+                        Clear
+                    </DialogButton>
+                </div>
+            )}
+            {queueState.isProcessing && (
+                <div style={{
+                    marginTop: '8px', padding: '8px 12px',
+                    backgroundColor: '#1a1a2e', borderRadius: '8px',
+                    border: '1px solid #2a2a4a'
+                }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                        <span style={{ fontSize: '12px' }}>
+                            Batch Install: {queueState.items.filter(i => i.status === 'done').length}/{queueState.items.length}
+                        </span>
+                        <DialogButton onClick={() => installQueue.clear()}
+                            style={{ padding: '2px 8px', fontSize: '11px', minWidth: 'initial', height: 'auto' }}>
+                            Cancel
+                        </DialogButton>
+                    </div>
+                    {queueState.items.filter(i => i.status === 'downloading' || i.status === 'installing').map(item => (
+                        <div key={item.shortname}>
+                            <div style={{ fontSize: '11px', color: '#b0b0b0', marginBottom: '2px' }}>
+                                {item.title}: {item.description}
+                            </div>
+                            <ProgressBar nProgress={item.progress} />
+                        </div>
+                    ))}
+                </div>
+            )}
             {content.NeedsLogin === "true" && (
                 <div style={{ paddingTop: '15px' }}>
                     <LoginContent serverAPI={serverAPI} initActionSet={initActionSet} initAction="GetLoginActions" />
@@ -210,6 +286,9 @@ export const GridContent: VFC<GridContentProps> = ({ content, serverAPI, initAct
                 games={content.Games ?? []}
                 initActionSet={initActionSet}
                 initAction=""
+                selectMode={selectMode}
+                selectedGames={selectedGames}
+                onToggleSelect={toggleSelection}
             />
         </Focusable>
     );
@@ -220,9 +299,12 @@ interface GridItemsProperties {
     serverAPI: ServerAPI;
     initActionSet: string;
     initAction: string;
+    selectMode?: boolean;
+    selectedGames?: Set<string>;
+    onToggleSelect?: (game: GameData) => void;
 }
 
-const GridItems: VFC<GridItemsProperties> = memo(({ serverAPI, games, initActionSet, initAction }) => {
+const GridItems: VFC<GridItemsProperties> = memo(({ serverAPI, games, initActionSet, initAction, selectMode, selectedGames, onToggleSelect }) => {
     const logger = new Logger("GridContainer");
 
     const imgAreaWidth = '120px';
@@ -246,19 +328,23 @@ const GridItems: VFC<GridItemsProperties> = memo(({ serverAPI, games, initAction
                         gameData={game}
                         imgAreaWidth={imgAreaWidth}
                         imgAreaHeight={imgAreaHeight}
+                        selectMode={selectMode && !game.SteamClientID}
+                        isSelected={selectedGames?.has(game.ShortName)}
                         onClick={() => {
-                            logger.debug("onClick game: ", game);
-                            // logger.debug("setActiveGame", game.ShortName);
-                            // setActiveGame(game.ShortName);
-                            showModal(
-                                <GameDetailsItem
-                                    serverAPI={serverAPI}
-                                    shortname={game.ShortName}
-                                    initActionSet={initActionSet}
-                                    initAction={initAction}
-                                    clearActiveGame={() => { }}
-                                />
-                            );
+                            if (selectMode && !game.SteamClientID && onToggleSelect) {
+                                onToggleSelect(game);
+                            } else {
+                                logger.debug("onClick game: ", game);
+                                showModal(
+                                    <GameDetailsItem
+                                        serverAPI={serverAPI}
+                                        shortname={game.ShortName}
+                                        initActionSet={initActionSet}
+                                        initAction={initAction}
+                                        clearActiveGame={() => { }}
+                                    />
+                                );
+                            }
                         }}
                     />
                 ))}

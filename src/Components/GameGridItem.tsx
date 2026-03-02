@@ -12,9 +12,11 @@ interface GameGridItemProps {
     imgAreaHeight: string;
     onClick: () => void;
     noName?: boolean;
+    selectMode?: boolean;
+    isSelected?: boolean;
 }
 
-const GameGridItem: VFC<GameGridItemProps> = ({ gameData, imgAreaWidth, imgAreaHeight, onClick, noName }) => {
+const GameGridItem: VFC<GameGridItemProps> = ({ gameData, imgAreaWidth, imgAreaHeight, onClick, noName, selectMode, isSelected }) => {
     const [isFocused, setIsFocused] = useState(false);
     const [isImgLoaded, setIsImgLoaded] = useState(false);
     const [imgError, setImgError] = useState(false);
@@ -88,6 +90,25 @@ const GameGridItem: VFC<GameGridItemProps> = ({ gameData, imgAreaWidth, imgAreaH
                                         className={focusRingClasses.FocusRing}
                                     />
                                 </>
+                            )}
+                            {selectMode && (
+                                <div style={{
+                                    position: 'absolute',
+                                    top: '4px',
+                                    right: '4px',
+                                    width: '24px',
+                                    height: '24px',
+                                    borderRadius: '4px',
+                                    backgroundColor: isSelected ? '#1a9fff' : 'rgba(0,0,0,0.6)',
+                                    border: isSelected ? '2px solid #1a9fff' : '2px solid rgba(255,255,255,0.4)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    zIndex: 10,
+                                    transition: 'all 0.15s ease',
+                                }}>
+                                    {isSelected && <span style={{ color: '#fff', fontSize: '16px', fontWeight: 'bold' }}>&#10003;</span>}
+                                </div>
                             )}
                         </div >
                     </div>
