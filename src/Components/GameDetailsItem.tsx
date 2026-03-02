@@ -304,7 +304,7 @@ export const GameDetailsItem: VFC<GameDetailsItemProperties> = ({ serverAPI, sho
             }
             setInstalling(false);
             serverAPI.toaster.toast({
-                title: "Junk-Store",
+                title: "GameVault",
                 body: "Launch options set",
             });
             await appDetailsCache.FetchDataForApp(id)

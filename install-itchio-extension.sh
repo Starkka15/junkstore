@@ -1,17 +1,17 @@
 #!/bin/bash
-# Standalone installer for the itch.io extension for Junk Store
-# This script copies the itch.io extension files to the Junk Store plugin directory.
+# Standalone installer for the itch.io extension for GameVault
+# This script copies the itch.io extension files to the GameVault plugin directory.
 
-PLUGIN_DIR="${HOME}/homebrew/plugins/Junk-Store"
+PLUGIN_DIR="${HOME}/homebrew/plugins/GameVault"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 if [[ ! -d "${PLUGIN_DIR}" ]]; then
-    echo "Error: Junk Store plugin not found at ${PLUGIN_DIR}"
-    echo "Please install Junk Store first."
+    echo "Error: GameVault plugin not found at ${PLUGIN_DIR}"
+    echo "Please install GameVault first."
     exit 1
 fi
 
-echo "Installing itch.io extension for Junk Store..."
+echo "Installing itch.io extension for GameVault..."
 
 # Create directories
 mkdir -p "${PLUGIN_DIR}/scripts/Extensions/Itchio"

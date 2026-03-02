@@ -19,7 +19,7 @@ export const ErrorModal: VFC<ErrorModalProps> = ({ Error, onCancel, onOK, onEscK
         >
             <Focusable
                 focusable={true} noFocusRing={false}>
-                <PanelSection title="Junk-Store Error">
+                <PanelSection title="GameVault Error">
                     <ErrorDisplay error={Error} />
 
                 </PanelSection>

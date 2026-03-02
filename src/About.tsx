@@ -1,7 +1,7 @@
 import { ConfirmModal, DialogBody, DialogButton, DialogControlsSection, Field, Focusable, Navigation, PanelSection, ServerAPI, SidebarNavigation, TextField, ToggleField, showModal } from "decky-frontend-lib";
 import { VFC, useEffect, useRef, useState } from "react";
 import { HiOutlineQrCode } from "react-icons/hi2";
-import { SiDiscord, SiGithub, SiGithubsponsors, SiKofi, SiPatreon, SiReddit, SiX } from "react-icons/si";
+import { SiDiscord, SiGithub } from "react-icons/si";
 import { showQrModal } from "./MainMenu";
 import Logger, { log } from "./Utils/logger";
 import { LogViewer } from "./LogViewer";
@@ -21,11 +21,11 @@ export const About: VFC<{ serverAPI: ServerAPI; }> = ({ serverAPI }) => {
     const socket = useRef<WebSocket | null>(null);
     const [isInstalling, setIsInstalling] = useState(false);
     const [isDownloading, setIsDownloading] = useState(false);
-    const [isDeveloperMode, setIsDeveloperMode] = useState(localStorage.getItem('js_developermode') === "true");
+    const [isDeveloperMode, setIsDeveloperMode] = useState(localStorage.getItem('gv_developermode') === "true");
 
     const showDeveloperMode = (show: boolean) => {
         setIsDeveloperMode(show)
-        localStorage.setItem('js_developermode', show.toString())
+        localStorage.setItem('gv_developermode', show.toString())
         if (show)
             addAchievement('MTA=')
     }
@@ -43,53 +43,17 @@ export const About: VFC<{ serverAPI: ServerAPI; }> = ({ serverAPI }) => {
     };
     const socialLinks = [
         {
-            label: "Need help or want to upgrade? Visit our website",
-            icon: <SiDiscord />,
-            link: "https://www.junkstore.xyz",
-            buttonText: "Visit",
-        },
-        {
-            label: "Discord",
-            icon: <SiDiscord />,
-            link: "https://discord.gg/uqemZ6cfHe",
-            buttonText: "Join Us",
-        },
-        {
-            label: "Patreon",
-            icon: <SiPatreon />,
-            link: "https://www.patreon.com/junkstore",
-            buttonText: "Become a Patreon",
-        },
-        {
-            label: "Ko-Fi",
-            icon: <SiKofi />,
-            link: "https://ko-fi.com/junkstore",
-            buttonText: "Buy me a coffee",
-        },
-        {
-            label: "Sponsor on GitHub",
-            icon: <SiGithubsponsors />,
-            link: "https://github.com/sponsors/ebenbruyns",
-            buttonText: "Sponsor",
-        },
-        {
             label: "GitHub",
             icon: <SiGithub />,
-            link: "https://github.com/ebenbruyns/junkstore",
-            buttonText: "Report issues",
+            link: "https://github.com/Starkka15/junkstore",
+            buttonText: "Report Issues",
         },
         {
-            label: "Reddit Community",
-            icon: <SiReddit />,
-            link: "https://www.reddit.com/r/JunkStore",
-            buttonText: "Reddit",
+            label: "Original Project Discord",
+            icon: <SiDiscord />,
+            link: "https://discord.gg/uqemZ6cfHe",
+            buttonText: "Join",
         },
-        {
-            label: "X (Twitter)",
-            icon: <SiX />,
-            link: "https://x.com/JunkStore4deck",
-            buttonText: "Follow",
-        }
     ];
     useEffect(() => {
         // Create a WebSocket connection to the backend server
@@ -151,31 +115,27 @@ export const About: VFC<{ serverAPI: ServerAPI; }> = ({ serverAPI }) => {
                                 <ScrollableWindowRelative>
                                     <div style={{ padding: '5px 0' }}>
                                         <div>
-                                            Junk Store emerged from a simple need: I wanted a way to play DOS games through Steam utilising Steam input for controller mapping.
+                                            <h2>GameVault</h2>
+                                            An open and extensible multi-store game launcher for Steam Deck. Access Epic, GOG, Amazon, and itch.io games directly from Game Mode.
                                             <br />
                                             <br />
-                                            Starting with DOS classics, it quickly evolved to encompass a wider array of collections. The plugin's versatility extends far beyond its Epic extension; with basic to intermediate programming skills, you can create your own extensions to tailor it to your needs.
-                                            <br />
-                                            <br />
-                                            While initially designed to address my requirements, I have made it available to become a community project. I am open to suggestions and PR's. However, not all features may be feasible to implement. Your support is invaluable in shaping the project's direction and expanding its capabilities.
+                                            This is a community fork of <a href="https://github.com/ebenbruyns/junkstore">Junk-Store</a> by Eben Bruyns, with additional store integrations and features.
                                             <br />
                                             <br />
                                             Please note: Before diving in, make sure to install the listed dependencies from the 'Dependencies' tab.
                                             <br />
                                             <br />
-                                            Join us on Discord to contribute, seek assistance, or connect with fellow enthusiasts.
-                                            <br />
-                                            <br />
-                                            <h2>Contributors</h2>
+                                            <h2>Original Project Contributors</h2>
                                             <ul>
                                                 <li>Eben Bruyns (junkrunner) - Software Sorcerer</li>
                                                 <li>Annie Ryan (mrs junkrunner) - Order Oracle</li>
                                                 <li>Jesse Bofill - Visual Virtuoso</li>
                                                 <li>Tech - Glitch Gladiator</li>
-                                            </ul>
-                                            <h2>Special Thanks - inactive contributors</h2>
-                                            <ul>
                                                 <li>Logan (Beebles) - UI Developer</li>
+                                            </ul>
+                                            <h2>Community Fork</h2>
+                                            <ul>
+                                                <li>Starkka15 - GOG, Amazon, itch.io extensions, cloud save sync, SteamGridDB</li>
                                             </ul>
                                         </div>
                                     </div>
@@ -298,7 +258,7 @@ export const About: VFC<{ serverAPI: ServerAPI; }> = ({ serverAPI }) => {
                     {
                         title: "Custom Backend",
                         content: <><PanelSection>
-                            <div>Junk Store is a flexible and extensible frontend. You can use a custom backend to provide the content for the store.
+                            <div>GameVault is a flexible and extensible frontend. You can use a custom backend to provide the content for the store.
                                 This does come with security concerns so beware of what you download. You can create your own custom backends too by following
                                 the instructions on github.
                                 <br />
@@ -321,50 +281,6 @@ export const About: VFC<{ serverAPI: ServerAPI; }> = ({ serverAPI }) => {
                                     disabled={isDownloading}
                                     onClick={download}>{isDownloading ? "Downloading..." : "Download"} </DialogButton>
                             </PanelSection>
-                        </>
-                    },
-                    {
-                        title: "Support",
-                        content: <>
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    flex: 'auto',
-                                    flexDirection: 'column',
-                                    gap: '10px'
-                                }}>
-                                <div style={{ padding: '0 15px', flex: 'auto', display: 'flex' }}>
-                                    <ScrollableWindowRelative>
-                                        <div style={{ padding: '5px 0' }}>
-
-                                            I try to make the Junk Store as easy to use as possible, but it is still a work in progress. While it  is free for you to use and download, this is first and foremost a passion project.
-                                            <br />
-                                            <br />
-                                            There is quite a large vision for Junk Store and a lot that I would like to add, such as support for more stores, platforms, features, etc. Ultimately I would like to create a platform that allows anyone to create their own scripts and share them with the community. A platform that allows anyone to contribute settings and scripts for games and stores.
-                                            <br />
-                                            <br />
-
-                                            To test the waters and to try and gauge interest in something like this, the first part has been gifted to the community to help you get more out of your gaming collection and experience.
-                                            <br />
-                                            <br />
-
-                                            This is something I would like to continue adding to for your benefit, however as the saying goes 'time is money'. I would love to be able to work on this full time, however that is simply not possible without some form of income. To make my vision a reality, I would be grateful if you would consider contributing to the growth of Junk Store and this project.
-                                            <br />
-                                            <br />
-
-                                            If you like what I'm doing please consider supporting me. I have a Github Sponsors page. I have also arranged to accept donations in Bitcoin, Etherium and Monero as requested by some. If you would like to support me in other ways please contact me on Discord.
-
-
-
-                                            <br />
-                                            <br />
-                                            See the links Tab for more information on how you can support me.
-                                        </div>
-
-
-                                    </ScrollableWindowRelative>
-                                </div>
-                            </div>
                         </>
                     },
                     {

@@ -1,9 +1,11 @@
 import json
+import os
 import sqlite3
 import sys
 import urllib.request
 
 import GameSet
+import SteamGridDB as sgdb_module
 import traceback
 import concurrent.futures
 
@@ -23,31 +25,99 @@ class GamesDb(GameSet.GameSet):
         conn.commit()
         conn.close()
     
+    def _read_sgdb_key(self):
+        runtime_dir = os.environ.get('DECKY_PLUGIN_RUNTIME_DIR', '')
+        if not runtime_dir:
+            return None
+        key_path = os.path.join(runtime_dir, 'steamgriddb_api_key')
+        try:
+            with open(key_path, 'r') as f:
+                key = f.read().strip()
+                return key if key else None
+        except FileNotFoundError:
+            return None
+
     def get_base64_images(self, game_id, image_prefix="", url_encode=False):
         conn = self.get_connection()
         c = conn.cursor()
         c.row_factory = sqlite3.Row
-        c.execute("SELECT ImagePath, Images.Type FROM Images join Game on Game.ID = Images.GameID WHERE ShortName=? order by Images.SortOrder", (game_id,))
-        
+        c.execute("SELECT ImagePath, Images.Type, Game.Title, Game.ID as GameDBID FROM Images join Game on Game.ID = Images.GameID WHERE Game.ShortName=? order by Images.SortOrder", (game_id,))
+
         grid = None
         gridH = None
         heroImage = None
         logo = None
-       
+        game_title = None
+        game_db_id = None
+
         for row in c.fetchall():
             image = row['ImagePath']
+            if game_title is None:
+                game_title = row['Title']
+                game_db_id = row['GameDBID']
             print(f"{row['Type']}: {image}", file=sys.stderr)
             if row['Type'] == 'vertical_cover':
                 grid = self.download(image)
-               
+
             elif row['Type'] == 'horizontal_artwork':
                 heroImage = self.download(image)
-                
+
             elif row['Type'] == 'logo':
                 gridH = self.download(image)
             elif row['Type'] == 'square_icon':
-                logo = self.download(image)    
-                
+                logo = self.download(image)
+
+        # If we didn't get a title from the Images join, fetch it directly
+        if game_title is None:
+            c.execute("SELECT Title, ID FROM Game WHERE ShortName=?", (game_id,))
+            row = c.fetchone()
+            if row:
+                game_title = row['Title']
+                game_db_id = row['ID']
+
+        # SteamGridDB fallback for missing image slots
+        missing = {}
+        if grid is None:
+            missing['vertical_cover'] = 0
+        if heroImage is None:
+            missing['horizontal_artwork'] = 1
+        if gridH is None:
+            missing['logo'] = 1
+        if logo is None:
+            missing['square_icon'] = 1
+
+        if missing and game_title:
+            api_key = self._read_sgdb_key()
+            if api_key:
+                try:
+                    sgdb = sgdb_module.SteamGridDB(api_key)
+                    sgdb_id = sgdb.find_game(self.storeName, game_id, game_title)
+                    if sgdb_id:
+                        sgdb_images = sgdb.get_images(sgdb_id)
+                        for img_type, sort_order in missing.items():
+                            url = sgdb_images.get(img_type)
+                            if url:
+                                print(f"SteamGridDB filling {img_type}: {url}", file=sys.stderr)
+                                b64 = self.download(url)
+                                if img_type == 'vertical_cover':
+                                    grid = b64
+                                elif img_type == 'horizontal_artwork':
+                                    heroImage = b64
+                                elif img_type == 'logo':
+                                    gridH = b64
+                                elif img_type == 'square_icon':
+                                    logo = b64
+                                # Cache URL in Images table
+                                if game_db_id is not None:
+                                    try:
+                                        c.execute("INSERT INTO Images (GameID, ImagePath, FileName, SortOrder, Type) VALUES (?, ?, ?, ?, ?)",
+                                                  (game_db_id, url, '', sort_order, img_type))
+                                    except Exception as e:
+                                        print(f"SteamGridDB cache insert error: {e}", file=sys.stderr)
+                        conn.commit()
+                except Exception as e:
+                    print(f"SteamGridDB fallback error: {e}", file=sys.stderr)
+
         conn.close()
         return json.dumps({'Type': 'Images', 'Content': {'Grid': grid, 'GridH': gridH, 'Hero': heroImage, 'Logo': logo}})
         

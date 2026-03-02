@@ -1,8 +1,8 @@
 {
-  "junk-store-actions": {
+  "gamevault-actions": {
     "Type": "ActionSet",
     "Content": {
-      "SetName": "JunkStoreActions",
+      "SetName": "GameVaultActions",
       "Actions": [
         {
           "Id": "GetGOGActions",
@@ -13,10 +13,10 @@
       ]
     }
   },
-  "junk-store-actions-no-tabs": {
+  "gamevault-actions-no-tabs": {
     "Type": "ActionSet",
     "Content": {
-      "SetName": "JunkStoreActionsNoTabs",
+      "SetName": "GameVaultActionsNoTabs",
       "Actions": [
         {
           "Id": "GetGOGActions",
@@ -41,7 +41,7 @@
       ]
     }
   },
-  "junk-store-tabs": {
+  "gamevault-tabs": {
     "Type": "StoreTabs",
     "Content": {
       "Tabs": [
@@ -58,37 +58,37 @@
           "Id": "Login",
           "Title": "Login",
           "Type": "Login",
-          "Command": "./scripts/junk-store.sh GOG login"
+          "Command": "./scripts/gamevault.sh GOG login"
         },
         {
           "Id": "LoginLaunchOptions",
           "Title": "Login",
           "Type": "Login",
-          "Command": "./scripts/junk-store.sh GOG login-launch-options"
+          "Command": "./scripts/gamevault.sh GOG login-launch-options"
         },
         {
           "Id": "Logout",
           "Title": "Logout",
           "Type": "Logout",
-          "Command": "./scripts/junk-store.sh GOG logout"
+          "Command": "./scripts/gamevault.sh GOG logout"
         },
         {
           "Id": "GetContent",
           "Title": "Status",
           "Type": "Status",
-          "Command": "./scripts/junk-store.sh GOG loginstatus"
+          "Command": "./scripts/gamevault.sh GOG loginstatus"
         },
         {
           "Id": "GetSetting",
           "Title": "Get settings",
           "Type": "GetSettings",
-          "Command": "./scripts/junk-store.sh GOG getsetting"
+          "Command": "./scripts/gamevault.sh GOG getsetting"
         },
         {
           "Id": "SaveSetting",
           "Title": "Set settings",
           "Type": "SaveSettings",
-          "Command": "./scripts/junk-store.sh GOG savesetting"
+          "Command": "./scripts/gamevault.sh GOG savesetting"
         }
       ]
     }
@@ -164,13 +164,13 @@
           "Id": "RunBinary",
           "Title": "Run executable in game folder",
           "Type": "ScriptAction",
-          "Command": "./scripts/junk-store.sh GOG run-exe"
+          "Command": "./scripts/gamevault.sh GOG run-exe"
         },
         {
           "Id": "GetContent",
           "Title": "Get executable list",
           "Type": "Content",
-          "Command": "./scripts/junk-store.sh GOG get-exe-list"
+          "Command": "./scripts/gamevault.sh GOG get-exe-list"
         }
       ]
     }
@@ -184,13 +184,13 @@
           "Id": "GetContent",
           "Title": "Get the ini files as json",
           "Type": "IniEditor",
-          "Command": "./scripts/junk-store.sh GOG getplatformconfig"
+          "Command": "./scripts/gamevault.sh GOG getplatformconfig"
         },
         {
           "Id": "SaveContent",
           "Title": "Save the ini files as json",
           "Type": "IniEditor",
-          "Command": "./scripts/junk-store.sh GOG saveplatformconfig"
+          "Command": "./scripts/gamevault.sh GOG saveplatformconfig"
         }
       ]
     }
@@ -204,13 +204,13 @@
           "Id": "GetContent",
           "Title": "Get the ini files as json",
           "Type": "IniEditor",
-          "Command": "./scripts/junk-store.sh GOG gettabconfig"
+          "Command": "./scripts/gamevault.sh GOG gettabconfig"
         },
         {
           "Id": "SaveContent",
           "Title": "Save the ini files as json",
           "Type": "IniEditor",
-          "Command": "./scripts/junk-store.sh GOG savetabconfig"
+          "Command": "./scripts/gamevault.sh GOG savetabconfig"
         }
       ]
     }
@@ -224,73 +224,73 @@
           "Id": "GetContent",
           "Title": "Get GOG games list",
           "Type": "GameGrid",
-          "Command": "./scripts/junk-store.sh GOG getgames"
+          "Command": "./scripts/gamevault.sh GOG getgames"
         },
         {
           "Id": "GetGameSize",
           "Title": "Get game size",
           "Type": "GameSize",
-          "Command": "./scripts/junk-store.sh GOG getgamesize"
+          "Command": "./scripts/gamevault.sh GOG getgamesize"
         },
         {
           "Id": "GetDetails",
           "Title": "Get game details",
           "Type": "GameDetails",
-          "Command": "./scripts/junk-store.sh GOG getgamedetails"
+          "Command": "./scripts/gamevault.sh GOG getgamedetails"
         },
         {
           "Id": "GetJsonImages",
           "Title": "Get game images as json",
           "Type": "GameImages",
-          "Command": "./scripts/junk-store.sh GOG getjsonimages"
+          "Command": "./scripts/gamevault.sh GOG getjsonimages"
         },
         {
           "Id": "Install",
           "Title": "Install game",
           "Type": "Install",
-          "Command": "./scripts/junk-store.sh GOG install"
+          "Command": "./scripts/gamevault.sh GOG install"
         },
         {
           "Id": "Download",
           "Title": "Download game",
           "Type": "Download",
-          "Command": "./scripts/junk-store.sh GOG download"
+          "Command": "./scripts/gamevault.sh GOG download"
         },
         {
           "Id": "Update",
           "Title": "Update game",
           "Type": "Update",
-          "Command": "./scripts/junk-store.sh GOG update"
+          "Command": "./scripts/gamevault.sh GOG update"
         },
         {
           "Id": "Repair",
           "Title": "Repair game",
           "Type": "Update",
-          "Command": "./scripts/junk-store.sh GOG repair"
+          "Command": "./scripts/gamevault.sh GOG repair"
         },
         {
           "Id": "Verify",
           "Title": "Verify game",
           "Type": "Verify",
-          "Command": "./scripts/junk-store.sh GOG verify"
+          "Command": "./scripts/gamevault.sh GOG verify"
         },
         {
           "Id": "Uninstall",
           "Title": "Uninstall game",
           "Type": "Uninstall",
-          "Command": "./scripts/junk-store.sh GOG uninstall"
+          "Command": "./scripts/gamevault.sh GOG uninstall"
         },
         {
           "Id": "GetProgress",
           "Title": "Get install progress",
           "Type": "GetProgress",
-          "Command": "./scripts/junk-store.sh GOG getprogress"
+          "Command": "./scripts/gamevault.sh GOG getprogress"
         },
         {
           "Id": "CancelInstall",
           "Title": "Cancel install",
           "Type": "CancelInstall",
-          "Command": "./scripts/junk-store.sh GOG cancelinstall"
+          "Command": "./scripts/gamevault.sh GOG cancelinstall"
         },
         {
           "Id": "GetLoginActions",
@@ -302,7 +302,7 @@
           "Id": "GetLaunchOptions",
           "Title": "Get launch options",
           "Type": "GetLaunchOptions",
-          "Command": "./scripts/junk-store.sh GOG getlaunchoptions"
+          "Command": "./scripts/gamevault.sh GOG getlaunchoptions"
         },
         {
           "Id": "GetExeActions",
@@ -338,31 +338,31 @@
           "Id": "Refresh",
           "Title": "Refresh Games List",
           "Type": "Refresh",
-          "Command": "./scripts/junk-store.sh GOG refresh"
+          "Command": "./scripts/gamevault.sh GOG refresh"
         },
         {
           "Id": "UmuIdUpdate",
           "Title": "Update UMU Id",
           "Type": "Executable",
-          "Command": "./scripts/junk-store.sh GOG update-umu-id"
+          "Command": "./scripts/gamevault.sh GOG update-umu-id"
         },
         {
           "Id": "DownloadSaves",
           "Title": "Download saves",
           "Type": "DownloadSaves",
-          "Command": "./scripts/junk-store.sh GOG download-saves"
+          "Command": "./scripts/gamevault.sh GOG download-saves"
         },
         {
           "Id": "UploadSaves",
           "Title": "Upload saves",
           "Type": "UploadSaves",
-          "Command": "./scripts/junk-store.sh GOG upload-saves"
+          "Command": "./scripts/gamevault.sh GOG upload-saves"
         },
         {
           "Id": "ToggleAutoSync",
           "Title": "Toggle auto-sync",
           "Type": "ToggleAutoSync",
-          "Command": "./scripts/junk-store.sh GOG toggle-autosync"
+          "Command": "./scripts/gamevault.sh GOG toggle-autosync"
         }
       ]
     }

@@ -49,7 +49,7 @@ export async function executeAction<Arguments extends ExecuteArgs, Content exten
         const success = res.result.Content as SuccessContent;
         logger.debug("result: ", res);
         const data: ToastData = {
-            title: "Junk-Store",
+            title: "GameVault",
             body: success.Message,
         };
         if (success.Title) {

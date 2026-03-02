@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
-# Register actions with the junk-store.sh script
+# Register actions with the gamevault.sh script
 ACTIONS+=("update-umu-id")
 
-# Register Amazon as a platform with the junk-store.sh script
+# Register Amazon as a platform with the gamevault.sh script
 PLATFORMS+=("Amazon")
 
 
@@ -232,13 +232,24 @@ function Amazon_gettabconfig(){
     else
         TEMP=$(cat "${DECKY_PLUGIN_DIR}/conf_schemas/amazontabconfig.json")
     fi
+    # Inject current SteamGridDB API key from shared file
+    SGDB_KEY=""
+    if [[ -f "${DECKY_PLUGIN_RUNTIME_DIR}/steamgriddb_api_key" ]]; then
+        SGDB_KEY=$(cat "${DECKY_PLUGIN_RUNTIME_DIR}/steamgriddb_api_key")
+    fi
+    TEMP=$(echo "$TEMP" | jq --arg key "$SGDB_KEY" \
+      '(.Sections[] | select(.Name=="SteamGridDB") .Options[] | select(.Key=="SteamGridDBApiKey")).Value = $key')
     echo "{\"Type\":\"IniContent\", \"Content\": ${TEMP}}"
 }
 function Amazon_savetabconfig(){
-
-    cat > "${DECKY_PLUGIN_RUNTIME_DIR}/conf_schemas/amazontabconfig.json"
+    CONFIG=$(cat)
+    echo "$CONFIG" > "${DECKY_PLUGIN_RUNTIME_DIR}/conf_schemas/amazontabconfig.json"
+    # Extract and save SteamGridDB API key to shared location
+    SGDB_KEY=$(echo "$CONFIG" | jq -r '.Sections[] | select(.Name=="SteamGridDB") | .Options[] | select(.Key=="SteamGridDBApiKey") | .Value // empty')
+    if [[ -n "$SGDB_KEY" ]]; then
+        echo "$SGDB_KEY" > "${DECKY_PLUGIN_RUNTIME_DIR}/steamgriddb_api_key"
+    fi
     echo "{\"Type\": \"Success\", \"Content\": {\"Message\": \"Amazon tab config saved\"}}"
-
 }
 
 function amazonupdategamedetailsaftercmd() {

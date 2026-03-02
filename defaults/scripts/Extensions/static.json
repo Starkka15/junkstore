@@ -1,14 +1,14 @@
 {
-  "junk-store-actions": {
+  "gamevault-actions": {
     "Type": "ActionSet",
     "Content": {
-      "SetName": "JunkStoreActions",
+      "SetName": "GameVaultActions",
       "Actions": [
         {
           "Id": "GetContent",
           "Title": "Get content",
           "Type": "TabPage",
-          "Command": "./scripts/get-json.py junk-store-tabs"
+          "Command": "./scripts/get-json.py gamevault-tabs"
         }
       ]
     }
@@ -27,7 +27,7 @@
       ]
     }
   },
-  "junk-store-tabs": {
+  "gamevault-tabs": {
     "Type": "StoreTabs",
     "Content": {
       "Tabs": []
@@ -42,7 +42,7 @@
           "Type": "Section",
           "Actions": [
             {
-              "ActionId": "JunkStoreInit",
+              "ActionId": "GameVaultInit",
               "Title": "Games",
               "Type": "Page"
             }

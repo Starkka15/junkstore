@@ -110,10 +110,9 @@ export const Content: VFC<{ serverAPI: ServerAPI; initActionSet: string; initAct
         (async () => {
             logger.debug("Refreshing Content with args: ", args);
             const contentRes = await getContent(actionSetName, stringifyArgs(args));
-            if (contentRes === null) {
-                return;
+            if (contentRes !== null) {
+                setContent(contentRes);
             }
-            setContent(contentRes);
             onFinish?.();
         })();
     };

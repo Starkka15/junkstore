@@ -26,7 +26,7 @@ def update(d, u):
     return d
 
 
-queue = ['../../data/Junk-Store/scripts/Extensions', './scripts/Extensions']
+queue = ['../../data/GameVault/scripts/Extensions', './scripts/Extensions']
 
 while queue:
     current_dir = queue.pop(0)

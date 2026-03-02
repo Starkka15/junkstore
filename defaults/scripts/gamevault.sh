@@ -3,13 +3,13 @@ source "./scripts/settings.sh"
 mkdir "${DECKY_PLUGIN_RUNTIME_DIR}/scripts/Extensions" -p
 source "${DECKY_PLUGIN_DIR}/scripts/shared.sh"
 
-# plugins hook into the junk-store.sh script by defining a function with the same name as the plugin prefixed with the platform name
+# plugins hook into the gamevault.sh script by defining a function with the same name as the plugin prefixed with the platform name
 # e.g. for the Epic plugin, the function would be Epic_init
 
 PLATFORMS=()
 PLATFORM="${1}"
 
-# List of actions that can be performed by the junk-store.sh script
+# List of actions that can be performed by the gamevault.sh script
 ACTIONS=("init" "getgames" "getactions" "saveconfig" "getconfig" "download" \
 "install" "update" "verify" "repair" "import" "getjsonimages" "cancelinstall" \
 "uninstall" "protontricks" "enable-eos-overlay" "disable-eos-overlay" \

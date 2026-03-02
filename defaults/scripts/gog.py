@@ -23,7 +23,7 @@ class GOG(GamesDb.GamesDb):
 
     lgogdl_cmd = os.environ.get('LGOGDL', '/bin/flatpak run com.github.sude_.lgogdownloader')
     gogdl_cmd = os.environ.get('GOGDL', '/bin/flatpak run com.github.heroic_games_launcher.heroic-gogdl')
-    auth_tokens = os.environ.get('AUTH_TOKENS', os.path.expanduser('~/homebrew/data/Junk-Store/gog_auth.json'))
+    auth_tokens = os.environ.get('AUTH_TOKENS', os.path.expanduser('~/homebrew/data/GameVault/gog_auth.json'))
 
     def execute_shell(self, cmd):
         result = subprocess.Popen(cmd, stdout=subprocess.PIPE, stdin=subprocess.PIPE,

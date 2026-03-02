@@ -138,7 +138,7 @@
             "detail": "chmods plugins folder to prevent perms issues",
             "type": "shell",
             "group": "none",
-            "command": "ssh ${config:deckuser}@${config:deckip} -p ${config:deckport} ${config:deckkey} 'echo '${config:deckpass}' | sudo -S chmod -R ug+rw ${config:deckdir}/homebrew/plugins/ ; echo '${config:deckpass}' | sudo -S chmod -R ug+rxw ${config:deckdir}/homebrew/plugins/Junk-Store/scripts/' ",
+            "command": "ssh ${config:deckuser}@${config:deckip} -p ${config:deckport} ${config:deckkey} 'echo '${config:deckpass}' | sudo -S chmod -R ug+rw ${config:deckdir}/homebrew/plugins/ ; echo '${config:deckpass}' | sudo -S chmod -R ug+rxw ${config:deckdir}/homebrew/plugins/GameVault/scripts/' ",
             "problemMatcher": []
         },
         {

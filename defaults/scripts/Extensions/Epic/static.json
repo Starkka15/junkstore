@@ -1,8 +1,8 @@
 {
-  "junk-store-actions": {
+  "gamevault-actions": {
     "Type": "ActionSet",
     "Content": {
-      "SetName": "JunkStoreActions",
+      "SetName": "GameVaultActions",
       "Actions": [
         {
           "Id": "GetEpicActions",
@@ -14,15 +14,15 @@
           "Id": "GetContent",
           "Title": "Get content",
           "Type": "TabPage",
-          "Command": "./scripts/get-json.py junk-store-tabs"
+          "Command": "./scripts/get-json.py gamevault-tabs"
         }
       ]
     }
   },
-  "junk-store-actions-no-tabs": {
+  "gamevault-actions-no-tabs": {
     "Type": "ActionSet",
     "Content": {
-      "SetName": "JunkStoreActionsNoTabs",
+      "SetName": "GameVaultActionsNoTabs",
       "Actions": [
         {
           "Id": "GetEpicActions",
@@ -34,7 +34,7 @@
           "Id": "GetContent",
           "Title": "Get content",
           "Type": "TabPage",
-          "Command": "./scripts/junk-store.sh Epic getgames"
+          "Command": "./scripts/gamevault.sh Epic getgames"
         },
         {
           "Id": "GetLoginActions",
@@ -51,16 +51,16 @@
       "SetName": "MainMenu",
       "Actions": [
         {
-          "Id": "JunkStoreInit",
+          "Id": "GameVaultInit",
           "Title": "Content",
           "Type": "Init",
-          "Command": "./scripts/get-json.py junk-store-actions"
+          "Command": "./scripts/get-json.py gamevault-actions"
         },
         {
-          "Id": "JunkStoreInitNoTabs",
+          "Id": "GameVaultInitNoTabs",
           "Title": "Content",
           "Type": "Init",
-          "Command": "./scripts/get-json.py junk-store-actions-no-tabs"
+          "Command": "./scripts/get-json.py gamevault-actions-no-tabs"
         },
         {
           "Id": "GetEpicActions",
@@ -71,7 +71,7 @@
       ]
     }
   },
-  "junk-store-tabs": {
+  "gamevault-tabs": {
     "Type": "StoreTabs",
     "Content": {
       "Tabs": [
@@ -88,37 +88,37 @@
           "Id": "Login",
           "Title": "Login",
           "Type": "Login",
-          "Command": "./scripts/junk-store.sh Epic login"
+          "Command": "./scripts/gamevault.sh Epic login"
         },
         {
           "Id": "LoginLaunchOptions",
           "Title": "Login",
           "Type": "Login",
-          "Command": "./scripts/junk-store.sh Epic login-launch-options"
+          "Command": "./scripts/gamevault.sh Epic login-launch-options"
         },
         {
           "Id": "Logout",
           "Title": "Logout",
           "Type": "Logout",
-          "Command": "./scripts/junk-store.sh Epic logout"
+          "Command": "./scripts/gamevault.sh Epic logout"
         },
         {
           "Id": "GetContent",
           "Title": "Status",
           "Type": "Status",
-          "Command": "./scripts/junk-store.sh Epic loginstatus"
+          "Command": "./scripts/gamevault.sh Epic loginstatus"
         },
         {
           "Id": "GetSetting",
           "Title": "Get settings",
           "Type": "GetSettings",
-          "Command": "./scripts/junk-store.sh Epic getsetting"
+          "Command": "./scripts/gamevault.sh Epic getsetting"
         },
         {
           "Id": "SaveSetting",
           "Title": "Set settings",
           "Type": "SaveSettings",
-          "Command": "./scripts/junk-store.sh Epic savesetting"
+          "Command": "./scripts/gamevault.sh Epic savesetting"
         }
       ]
     }
@@ -236,13 +236,13 @@
           "Id": "RunBinary",
           "Title": "Run executable in game folder",
           "Type": "ScriptAction",
-          "Command": "./scripts/junk-store.sh Epic run-exe"
+          "Command": "./scripts/gamevault.sh Epic run-exe"
         },
         {
           "Id": "GetContent",
           "Title": "Get executable list",
           "Type": "Content",
-          "Command": "./scripts/junk-store.sh Epic get-exe-list"
+          "Command": "./scripts/gamevault.sh Epic get-exe-list"
         }
       ]
     }
@@ -256,13 +256,13 @@
           "Id": "GetContent",
           "Title": "Get the ini files as json",
           "Type": "IniEditor",
-          "Command": "./scripts/junk-store.sh Epic getplatformconfig"
+          "Command": "./scripts/gamevault.sh Epic getplatformconfig"
         },
         {
           "Id": "SaveContent",
           "Title": "Save the ini files as json",
           "Type": "IniEditor",
-          "Command": "./scripts/junk-store.sh Epic saveplatformconfig"
+          "Command": "./scripts/gamevault.sh Epic saveplatformconfig"
         }
       ]
     }
@@ -276,13 +276,13 @@
           "Id": "GetContent",
           "Title": "Get the ini files as json",
           "Type": "IniEditor",
-          "Command": "./scripts/junk-store.sh Epic gettabconfig"
+          "Command": "./scripts/gamevault.sh Epic gettabconfig"
         },
         {
           "Id": "SaveContent",
           "Title": "Save the ini files as json",
           "Type": "IniEditor",
-          "Command": "./scripts/junk-store.sh Epic savetabconfig"
+          "Command": "./scripts/gamevault.sh Epic savetabconfig"
         }
       ]
     }
@@ -296,139 +296,139 @@
           "Id": "GetContent",
           "Title": "Get Epic games list",
           "Type": "GameGrid",
-          "Command": "./scripts/junk-store.sh Epic getgames"
+          "Command": "./scripts/gamevault.sh Epic getgames"
         },
         {
           "Id": "GetGameSize",
           "Title": "Get game size",
           "Type": "GameSize",
-          "Command": "./scripts/junk-store.sh Epic getgamesize"
+          "Command": "./scripts/gamevault.sh Epic getgamesize"
         },
         {
           "Id": "GetDetails",
           "Title": "Get game details",
           "Type": "GameDetails",
-          "Command": "./scripts/junk-store.sh Epic getgamedetails"
+          "Command": "./scripts/gamevault.sh Epic getgamedetails"
         },
         {
           "Id": "GetJsonImages",
           "Title": "Get game images as json",
           "Type": "GameImages",
-          "Command": "./scripts/junk-store.sh Epic getjsonimages"
+          "Command": "./scripts/gamevault.sh Epic getjsonimages"
         },
         {
           "Id": "Install",
           "Title": "Install game",
           "Type": "Install",
-          "Command": "./scripts/junk-store.sh Epic install"
+          "Command": "./scripts/gamevault.sh Epic install"
         },
         {
           "Id": "Download",
           "Title": "Download game",
           "Type": "Download",
-          "Command": "./scripts/junk-store.sh Epic download"
+          "Command": "./scripts/gamevault.sh Epic download"
         },
         {
           "Id": "DownloadSaves",
           "Title": "Download saves",
           "Type": "DownloadSaves",
-          "Command": "./scripts/junk-store.sh Epic download-saves"
+          "Command": "./scripts/gamevault.sh Epic download-saves"
         },
         {
           "Id": "UploadSaves",
           "Title": "Upload saves",
           "Type": "UploadSaves",
-          "Command": "./scripts/junk-store.sh Epic upload-saves"
+          "Command": "./scripts/gamevault.sh Epic upload-saves"
         },
         {
           "Id": "Update",
           "Title": "Update game",
           "Type": "Update",
-          "Command": "./scripts/junk-store.sh Epic update"
+          "Command": "./scripts/gamevault.sh Epic update"
         },
         {
           "Id": "Repair",
           "Title": "Repair game",
           "Type": "Update",
-          "Command": "./scripts/junk-store.sh Epic repair"
+          "Command": "./scripts/gamevault.sh Epic repair"
         },
         {
           "Id": "RepairUpdate",
           "Title": "Repair and Update game",
           "Type": "Update",
-          "Command": "./scripts/junk-store.sh Epic repair_and_update"
+          "Command": "./scripts/gamevault.sh Epic repair_and_update"
         },
         {
           "Id": "Verify",
           "Title": "Veirfy game",
           "Type": "Verify",
-          "Command": "./scripts/junk-store.sh Epic verify"
+          "Command": "./scripts/gamevault.sh Epic verify"
         },
         {
           "Id": "Import",
           "Title": "Import game",
           "Type": "Import",
-          "Command": "./scripts/junk-store.sh Epic import"
+          "Command": "./scripts/gamevault.sh Epic import"
         },
         {
           "Id": "Uninstall",
           "Title": "Uninstall game",
           "Type": "Uninstall",
-          "Command": "./scripts/junk-store.sh Epic uninstall"
+          "Command": "./scripts/gamevault.sh Epic uninstall"
         },
         {
           "Id": "Move",
           "Title": "Move game",
           "Type": "Move",
-          "Command": "./scripts/junk-store.sh Epic move"
+          "Command": "./scripts/gamevault.sh Epic move"
         },
         {
           "Id": "EnableEOSoverlay",
           "Title": "Enable EOS overlay",
           "Type": "Executable",
-          "Command": "./scripts/junk-store.sh Epic  enable-eos-overlay"
+          "Command": "./scripts/gamevault.sh Epic  enable-eos-overlay"
         },
         {
           "Id": "DisableEOSoverlay",
           "Title": "Disable EOS overlay",
           "Type": "Executable",
-          "Command": "./scripts/junk-store.sh Epic disable-eos-overlay"
+          "Command": "./scripts/gamevault.sh Epic disable-eos-overlay"
         },
         {
           "Id": "InstallOverlay",
           "Title": "Install EOS overlay",
           "Type": "Executable",
-          "Command": "./scripts/junk-store.sh Epic install-overlay"
+          "Command": "./scripts/gamevault.sh Epic install-overlay"
         },
         {
           "Id": "UpdateOverlay",
           "Title": "Install EOS overlay",
           "Type": "Executable",
-          "Command": "./scripts/junk-store.sh Epic update-overlay"
+          "Command": "./scripts/gamevault.sh Epic update-overlay"
         },
         {
           "Id": "RemoveOverlay",
           "Title": "Install EOS overlay",
           "Type": "Executable",
-          "Command": "./scripts/junk-store.sh Epic remove-overlay"
+          "Command": "./scripts/gamevault.sh Epic remove-overlay"
         },
         {
           "Id": "ProtonTricks",
           "Title": "Proton Tricks",
           "Type": "Executable",
-          "Command": "./scripts/junk-store.sh Epic protontricks"
+          "Command": "./scripts/gamevault.sh Epic protontricks"
         },
         {
           "Id": "GetProgress",
           "Title": "Get install progress",
           "Type": "GetProgress",
-          "Command": "./scripts/junk-store.sh Epic getprogress"
+          "Command": "./scripts/gamevault.sh Epic getprogress"
         },
         {
           "Id": "CancelInstall",
           "Title": "Cancel install",
           "Type": "CancelInstall",
-          "Command": "./scripts/junk-store.sh Epic cancelinstall"
+          "Command": "./scripts/gamevault.sh Epic cancelinstall"
         },
         {
           "Id": "GetLoginActions",
@@ -440,7 +440,7 @@
           "Id": "GetLaunchOptions",
           "Title": "Get launch options",
           "Type": "GetLaunchOptions",
-          "Command": "./scripts/junk-store.sh Epic getlaunchoptions"
+          "Command": "./scripts/gamevault.sh Epic getlaunchoptions"
         },
         {
           "Id": "GetExeActions",
@@ -477,25 +477,25 @@
           "Id": "Refresh",
           "Title": "Refresh Games List",
           "Type": "Refresh",
-          "Command": "./scripts/junk-store.sh Epic refresh"
+          "Command": "./scripts/gamevault.sh Epic refresh"
         },
         {
           "Id": "RegistryFix",   
           "Title": "Registry Fix",
           "Type": "Executable",
-          "Command": "./scripts/junk-store.sh Epic registry-fix"
+          "Command": "./scripts/gamevault.sh Epic registry-fix"
         },
         {
           "Id": "UmuIdUpdate",
           "Title": "Update UMU Id",
           "Type": "Executable",
-          "Command": "./scripts/junk-store.sh Epic update-umu-id"
+          "Command": "./scripts/gamevault.sh Epic update-umu-id"
         },
         {
           "Id": "ToggleAutoSync",
           "Title": "Toggle auto-sync",
           "Type": "ToggleAutoSync",
-          "Command": "./scripts/junk-store.sh Epic toggle-autosync"
+          "Command": "./scripts/gamevault.sh Epic toggle-autosync"
         }
       ]
     }

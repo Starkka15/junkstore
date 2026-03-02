@@ -1,7 +1,7 @@
 {
-  "name": "Junk-Store",
+  "name": "GameVault",
   "version": "1.1.13",
-  "description": "Transform your gaming experience with Junk-Store - the ultimate solution for seamlessly integrating non-Steam games into your Steam Deck library. Say goodbye to clunky work arounds and hello to a world of endless gaming possibilities. Get ready to elevate your gaming to the next level with Junk-Store!",
+  "description": "An open and extensible multi-store game launcher for Steam Deck. Access Epic, GOG, Amazon, and itch.io games directly from Game Mode.",
   "scripts": {
     "build": "shx rm -rf dist && rollup -c",
     "watch": "rollup -c -w",
@@ -9,21 +9,24 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ebenbruyns/junkstore.git"
+    "url": "git+https://github.com/Starkka15/junkstore.git"
   },
   "keywords": [
     "decky",
     "plugin",
     "Epic",
+    "GOG",
+    "Amazon",
+    "Itchio",
     "steam-deck",
     "deck"
   ],
-  "author": "Eben Bruyns <eben@sdk.co.nz>",
+  "author": "Starkka15",
   "license": "BSD-3-Clause",
   "bugs": {
-    "url": "https://github.com/ebenbruyns/junkstore"
+    "url": "https://github.com/Starkka15/junkstore/issues"
   },
-  "homepage": "https://github.com/ebenbruyns/junkstore#readme.md",
+  "homepage": "https://github.com/Starkka15/junkstore#readme",
   "devDependencies": {
     "@rollup/plugin-commonjs": "^21.1.0",
     "@rollup/plugin-json": "^4.1.0",
@@ -33,7 +36,6 @@
     "@types/react": "16.14.0",
     "@types/webpack": "^5.28.0",
     "decky-frontend-lib": "^3.25.0",
-    "react-markdown": "^8.0.7",
     "react-qr-code": "^2.0.12",
     "rollup": "^2.77.1",
     "rollup-plugin-import-assets": "^1.1.1",

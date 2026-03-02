@@ -6,7 +6,7 @@ function install(){
     echo "==================================="
     #recusively find all install_deps.sh files and execute them
     find ./scripts/Extensions -type f -name "install_deps.sh" -exec bash {} \;
-    find ~/homebrew/data/Junk-Store/scripts/Extensions -type f -name "install_deps.sh" -exec bash {} \;
+    find ~/homebrew/data/GameVault/scripts/Extensions -type f -name "install_deps.sh" -exec bash {} \;
 
 
 
@@ -24,7 +24,7 @@ function uninstall(){
     echo "Uninstalling dependencies - built-in extensions"
     find ./scripts/Extensions -type f -name "install_deps.sh" -exec bash {} uninstall \;
     echo "Uninstalling dependencies - user extensions"
-    find ~/homebrew/data/Junk-Store/scripts/Extensions -type f -name "install_deps.sh" -exec bash {} uninstall \;
+    find ~/homebrew/data/GameVault/scripts/Extensions -type f -name "install_deps.sh" -exec bash {} uninstall \;
 
     echo "==================================="
     echo "  Dependecy uninstallation complete"

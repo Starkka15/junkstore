@@ -33,7 +33,7 @@ export default defineConfig({
       "decky-frontend-lib": "DFL"
     },
     format: "iife",
-   // name: "JunkStorePlugin",
+   // name: "GameVaultPlugin",
     exports: "default",
   },
 });

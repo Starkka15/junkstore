@@ -2,12 +2,12 @@ const isLoggerEnabled = () => { return localStorage.getItem('enableLogger') === 
 
 
 
-export const JunkStoreLoggerEnable = () => {
+export const GameVaultLoggerEnable = () => {
     localStorage.setItem('enableLogger', 'true');
 };
 
 
-export const JunkStoreLoggerDisable = () => {
+export const GameVaultLoggerDisable = () => {
     localStorage.setItem('enableLogger', 'false');
 };
 
@@ -15,7 +15,7 @@ export const log = (name: string) => {
     if (isLoggerEnabled()) {
       return console.info.bind(
           window.console,
-          `%c Junk Store %c ${name} %c`,
+          `%c GameVault %c ${name} %c`,
           'background: #16a085; color: black;',
           'background: #1abc9c; color: black;',
           'background: transparent;',
@@ -28,7 +28,7 @@ export const log = (name: string) => {
 export const debug = (name: string) => {
     if (isLoggerEnabled()) {
       return console.debug.bind(window.console,
-          `%c Junk Store %c ${name} %c`,
+          `%c GameVault %c ${name} %c`,
           'background: #16a085; color: black;',
           'background: #1abc9c; color: black;',
           'color: blue;');
@@ -39,7 +39,7 @@ export const debug = (name: string) => {
 
 export const error = (name: string) => {
     return console.error.bind(window.console,
-        `%c Junk Store %c ${name} %c`,
+        `%c GameVault %c ${name} %c`,
         'background: #16a085; color: black;',
         'background: #FF0000;',
         'background: transparent;'
@@ -48,7 +48,7 @@ export const error = (name: string) => {
 
 export const warn = (name: string) => {
     return console.warn.bind(window.console,
-        `%c Junk Store %c ${name} %c`,
+        `%c GameVault %c ${name} %c`,
         'background: #16a085; color: black;',
         'background: #c4a000;',
         'background: transparent;'

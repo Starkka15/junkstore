@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 PLATFORM=GOG
-export DECKY_PLUGIN_RUNTIME_DIR="${HOME}/homebrew/data/Junk-Store"
-export DECKY_PLUGIN_DIR="${HOME}/homebrew/plugins/Junk-Store"
-export DECKY_PLUGIN_LOG_DIR="${HOME}/homebrew/logs/Junk-Store"
+export DECKY_PLUGIN_RUNTIME_DIR="${HOME}/homebrew/data/GameVault"
+export DECKY_PLUGIN_DIR="${HOME}/homebrew/plugins/GameVault"
+export DECKY_PLUGIN_LOG_DIR="${HOME}/homebrew/logs/GameVault"
 export GOGDL="${HOME}/.local/bin/gogdl"
 
 export PYTHONPATH="${DECKY_PLUGIN_DIR}/scripts/":"${DECKY_PLUGIN_DIR}/scripts/shared/":$PYTHONPATH

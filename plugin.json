@@ -1,10 +1,10 @@
 {
-  "name": "Junk-Store",
-  "author": "Eben Bruyns",
+  "name": "GameVault",
+  "author": "Starkka15",
   "flags": [],
   "publish": {
-    "tags": ["Epic", "Launcher", "88mph"],
-    "description": "Transform your gaming experience with Junk-Store - the ultimate solution for seamlessly integrating non-Steam games into your Steam Deck library. Say goodbye to clunky work arounds and hello to a world of endless gaming possibilities. Get ready to elevate your gaming to the next level with Junk-Store!",
-    "image": "https://www.junkstore.xyz/assets/junkstore.jpg"
+    "tags": ["Epic", "GOG", "Amazon", "Itchio", "Launcher"],
+    "description": "An open and extensible multi-store game launcher for Steam Deck. Access Epic, GOG, Amazon, and itch.io games directly from Game Mode.",
+    "image": ""
   }
 }

@@ -1,8 +1,8 @@
 {
-  "junk-store-actions": {
+  "gamevault-actions": {
     "Type": "ActionSet",
     "Content": {
-      "SetName": "JunkStoreActions",
+      "SetName": "GameVaultActions",
       "Actions": [
         {
           "Id": "GetItchioActions",
@@ -13,10 +13,10 @@
       ]
     }
   },
-  "junk-store-actions-no-tabs": {
+  "gamevault-actions-no-tabs": {
     "Type": "ActionSet",
     "Content": {
-      "SetName": "JunkStoreActionsNoTabs",
+      "SetName": "GameVaultActionsNoTabs",
       "Actions": [
         {
           "Id": "GetItchioActions",
@@ -41,7 +41,7 @@
       ]
     }
   },
-  "junk-store-tabs": {
+  "gamevault-tabs": {
     "Type": "StoreTabs",
     "Content": {
       "Tabs": [
@@ -58,37 +58,37 @@
           "Id": "Login",
           "Title": "Login",
           "Type": "Login",
-          "Command": "./scripts/junk-store.sh Itchio login"
+          "Command": "./scripts/gamevault.sh Itchio login"
         },
         {
           "Id": "LoginLaunchOptions",
           "Title": "Login",
           "Type": "Login",
-          "Command": "./scripts/junk-store.sh Itchio login-launch-options"
+          "Command": "./scripts/gamevault.sh Itchio login-launch-options"
         },
         {
           "Id": "Logout",
           "Title": "Logout",
           "Type": "Logout",
-          "Command": "./scripts/junk-store.sh Itchio logout"
+          "Command": "./scripts/gamevault.sh Itchio logout"
         },
         {
           "Id": "GetContent",
           "Title": "Status",
           "Type": "Status",
-          "Command": "./scripts/junk-store.sh Itchio loginstatus"
+          "Command": "./scripts/gamevault.sh Itchio loginstatus"
         },
         {
           "Id": "GetSetting",
           "Title": "Get settings",
           "Type": "GetSettings",
-          "Command": "./scripts/junk-store.sh Itchio getsetting"
+          "Command": "./scripts/gamevault.sh Itchio getsetting"
         },
         {
           "Id": "SaveSetting",
           "Title": "Set settings",
           "Type": "SaveSettings",
-          "Command": "./scripts/junk-store.sh Itchio savesetting"
+          "Command": "./scripts/gamevault.sh Itchio savesetting"
         }
       ]
     }
@@ -128,13 +128,13 @@
           "Id": "RunBinary",
           "Title": "Run executable in game folder",
           "Type": "ScriptAction",
-          "Command": "./scripts/junk-store.sh Itchio run-exe"
+          "Command": "./scripts/gamevault.sh Itchio run-exe"
         },
         {
           "Id": "GetContent",
           "Title": "Get executable list",
           "Type": "Content",
-          "Command": "./scripts/junk-store.sh Itchio get-exe-list"
+          "Command": "./scripts/gamevault.sh Itchio get-exe-list"
         }
       ]
     }
@@ -148,13 +148,13 @@
           "Id": "GetContent",
           "Title": "Get the ini files as json",
           "Type": "IniEditor",
-          "Command": "./scripts/junk-store.sh Itchio getplatformconfig"
+          "Command": "./scripts/gamevault.sh Itchio getplatformconfig"
         },
         {
           "Id": "SaveContent",
           "Title": "Save the ini files as json",
           "Type": "IniEditor",
-          "Command": "./scripts/junk-store.sh Itchio saveplatformconfig"
+          "Command": "./scripts/gamevault.sh Itchio saveplatformconfig"
         }
       ]
     }
@@ -168,13 +168,13 @@
           "Id": "GetContent",
           "Title": "Get the ini files as json",
           "Type": "IniEditor",
-          "Command": "./scripts/junk-store.sh Itchio gettabconfig"
+          "Command": "./scripts/gamevault.sh Itchio gettabconfig"
         },
         {
           "Id": "SaveContent",
           "Title": "Save the ini files as json",
           "Type": "IniEditor",
-          "Command": "./scripts/junk-store.sh Itchio savetabconfig"
+          "Command": "./scripts/gamevault.sh Itchio savetabconfig"
         }
       ]
     }
@@ -188,55 +188,55 @@
           "Id": "GetContent",
           "Title": "Get itch.io games list",
           "Type": "GameGrid",
-          "Command": "./scripts/junk-store.sh Itchio getgames"
+          "Command": "./scripts/gamevault.sh Itchio getgames"
         },
         {
           "Id": "GetGameSize",
           "Title": "Get game size",
           "Type": "GameSize",
-          "Command": "./scripts/junk-store.sh Itchio getgamesize"
+          "Command": "./scripts/gamevault.sh Itchio getgamesize"
         },
         {
           "Id": "GetDetails",
           "Title": "Get game details",
           "Type": "GameDetails",
-          "Command": "./scripts/junk-store.sh Itchio getgamedetails"
+          "Command": "./scripts/gamevault.sh Itchio getgamedetails"
         },
         {
           "Id": "GetJsonImages",
           "Title": "Get game images as json",
           "Type": "GameImages",
-          "Command": "./scripts/junk-store.sh Itchio getjsonimages"
+          "Command": "./scripts/gamevault.sh Itchio getjsonimages"
         },
         {
           "Id": "Install",
           "Title": "Install game",
           "Type": "Install",
-          "Command": "./scripts/junk-store.sh Itchio install"
+          "Command": "./scripts/gamevault.sh Itchio install"
         },
         {
           "Id": "Download",
           "Title": "Download game",
           "Type": "Download",
-          "Command": "./scripts/junk-store.sh Itchio download"
+          "Command": "./scripts/gamevault.sh Itchio download"
         },
         {
           "Id": "Uninstall",
           "Title": "Uninstall game",
           "Type": "Uninstall",
-          "Command": "./scripts/junk-store.sh Itchio uninstall"
+          "Command": "./scripts/gamevault.sh Itchio uninstall"
         },
         {
           "Id": "GetProgress",
           "Title": "Get install progress",
           "Type": "GetProgress",
-          "Command": "./scripts/junk-store.sh Itchio getprogress"
+          "Command": "./scripts/gamevault.sh Itchio getprogress"
         },
         {
           "Id": "CancelInstall",
           "Title": "Cancel install",
           "Type": "CancelInstall",
-          "Command": "./scripts/junk-store.sh Itchio cancelinstall"
+          "Command": "./scripts/gamevault.sh Itchio cancelinstall"
         },
         {
           "Id": "GetLoginActions",
@@ -248,7 +248,7 @@
           "Id": "GetLaunchOptions",
           "Title": "Get launch options",
           "Type": "GetLaunchOptions",
-          "Command": "./scripts/junk-store.sh Itchio getlaunchoptions"
+          "Command": "./scripts/gamevault.sh Itchio getlaunchoptions"
         },
         {
           "Id": "GetExeActions",
@@ -284,13 +284,13 @@
           "Id": "Refresh",
           "Title": "Refresh Games List",
           "Type": "Refresh",
-          "Command": "./scripts/junk-store.sh Itchio refresh"
+          "Command": "./scripts/gamevault.sh Itchio refresh"
         },
         {
           "Id": "UmuIdUpdate",
           "Title": "Update UMU Id",
           "Type": "Executable",
-          "Command": "./scripts/junk-store.sh Itchio update-umu-id"
+          "Command": "./scripts/gamevault.sh Itchio update-umu-id"
         }
       ]
     }

@@ -3,7 +3,7 @@
     "Id": "init",
     "Title": "Store",
     "Type": "Init",
-    "Command": "./scripts/junk-store.sh init"
+    "Command": "./scripts/gamevault.sh init"
   },
   {
     "Id": "InitActions",

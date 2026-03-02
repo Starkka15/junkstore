@@ -209,7 +209,7 @@ class GameSet:
             limited_clause = "LIMIT 100"
         if (installed.lower() == "true"):
             c.execute(
-                f"SELECT Game.ID, ShortName, Title, SteamClientID FROM Game WHERE SteamClientID <> '' and LOWER(Title) LIKE ? ORDER BY Title COLLATE NOCASE {limited_clause}", ('%' + filter_str.lower().replace(" ", "%") + '%',))
+                f"SELECT Game.ID, ShortName, Title, SteamClientID FROM Game WHERE SteamClientID IS NOT NULL AND SteamClientID <> '' and LOWER(Title) LIKE ? ORDER BY Title COLLATE NOCASE {limited_clause}", ('%' + filter_str.lower().replace(" ", "%") + '%',))
         else:
             c.execute(
                 f"SELECT Game.ID, ShortName, Title, SteamClientID FROM Game WHERE LOWER(Title) LIKE ? ORDER BY Title COLLATE NOCASE {limited_clause}", ('%' + filter_str.lower().replace(" ", "%") + '%',))

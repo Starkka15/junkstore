@@ -138,7 +138,7 @@ class Helper:
             "DECKY_HOME": decky_plugin.DECKY_HOME,
             "DECKY_PLUGIN_DIR": decky_plugin.DECKY_PLUGIN_DIR,
             "DECKY_PLUGIN_LOG_DIR": decky_plugin.DECKY_PLUGIN_LOG_DIR,
-            "DECKY_PLUGIN_NAME": "junk-store",
+            "DECKY_PLUGIN_NAME": "gamevault",
             "DECKY_PLUGIN_RUNTIME_DIR": decky_plugin.DECKY_PLUGIN_RUNTIME_DIR,
             "DECKY_PLUGIN_SETTINGS_DIR": decky_plugin.DECKY_PLUGIN_SETTINGS_DIR,
             "WORKING_DIR": Helper.working_directory,
@@ -428,7 +428,7 @@ class Helper:
 
 class Plugin:
     async def _main(self):
-        decky_plugin.logger.info("Junk-Store starting up...")
+        decky_plugin.logger.info("GameVault starting up...")
         try:
             Helper.action_cache = {}
             if os.path.exists(
@@ -442,13 +442,13 @@ class Plugin:
                 f"plugin: {decky_plugin.DECKY_PLUGIN_NAME} dir: {decky_plugin.DECKY_PLUGIN_RUNTIME_DIR}"
             )
             # pass cmd argument to _call_script method
-            decky_plugin.logger.info("Junk Store initializing")
+            decky_plugin.logger.info("GameVault initializing")
             result = await Helper.execute_action("init", "init")
-            decky_plugin.logger.info("Junk Store initialized")
+            decky_plugin.logger.info("GameVault initialized")
             if Helper.verbose:
                 decky_plugin.logger.info(f"init result: {result}")
             await Helper.start_ws_server()
-            decky_plugin.logger.info("Junk-Store started")
+            decky_plugin.logger.info("GameVault started")
 
         except Exception as e:
             decky_plugin.logger.error(f"Error in _main: {e}")
@@ -599,63 +599,6 @@ class Plugin:
 
         return log_files
 
-    async def fetch_rss_feed(
-        self, url: str, excluded_categories: list = None, extensions: list = None
-    ):
-        """
-        Fetch and parse RSS feed from the given URL by calling external script
-        Filter out items with categories in the excluded_categories list (case-sensitive)
-        Extensions list can be used for future server-side filtering
-        """
-        try:
-            if excluded_categories is None:
-                excluded_categories = []
-            if extensions is None:
-                extensions = Helper.get_installed_extensions()
-            if not extensions:
-                extensions = []
-
-            decky_plugin.logger.info(f"Fetching RSS feed from: {url}")
-            decky_plugin.logger.info(f"Excluded categories: {excluded_categories}")
-            decky_plugin.logger.info(f"Installed extensions: {extensions}")
-
-            # Prepare input data for the script
-            input_data = json.dumps(
-                {
-                    "url": url,
-                    "excluded_categories": excluded_categories,
-                    "extensions": extensions,
-                }
-            )
-
-            # Call the RSS fetcher script
-            script_path = os.path.join(
-                Helper.working_directory, "scripts", "fetch_rss.py"
-            )
-            result = await Helper.pyexec_subprocess(
-                f"python3 {script_path}", input=input_data
-            )
-
-            if result and result.get("returncode") == 0:
-                stdout = result.get("stdout", "{}")
-                data = json.loads(stdout)
-                decky_plugin.logger.info(
-                    f"Successfully fetched {len(data.get('items', []))} RSS items"
-                )
-                return data
-            else:
-                error_msg = (
-                    result.get("stderr", "Unknown error")
-                    if result
-                    else "Script execution failed"
-                )
-                decky_plugin.logger.error(f"Error fetching RSS feed: {error_msg}")
-                return {"items": []}
-
-        except Exception as e:
-            decky_plugin.logger.error(f"Error fetching RSS feed: {e}")
-            return {"items": []}
-
     async def _unload(self):
         try:
             decky_plugin.logger.info("Starting plugin unload...")
@@ -675,12 +618,12 @@ class Plugin:
             # Clear the action cache
             Helper.action_cache.clear()
 
-            decky_plugin.logger.info("Junk-Store out!")
+            decky_plugin.logger.info("GameVault out!")
         except Exception as e:
             decky_plugin.logger.error(f"Error during unload: {e}")
 
     async def _migration(self):
-        plugin_dir = "Junk-Store"
+        plugin_dir = "GameVault"
         decky_plugin.logger.info("Migrating")
         # Here's a migration example for logs:
         # - `~/.config/decky-template/template.log` will be migrated to `decky_plugin.DECKY_PLUGIN_LOG_DIR/template.log`
