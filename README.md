@@ -60,6 +60,10 @@ These features were added by the community fork:
 - **GE-Proton Installer** — One-click download and install of the latest GE-Proton from the Dependencies tab
 - **Proton Fixes Lookup** — Look up known fixes for any installed game from the [umu-protonfixes](https://github.com/Open-Wine-Components/umu-protonfixes) database. Falls back to Steam fixes via UMU ID when store-specific fixes aren't available.
 - **Auto-Apply Proton Fixes** — One-click button to automatically apply known environment variable fixes to a game's launch configuration
+- **Storage Management** — View total disk usage across all stores, per-store breakdown, free disk space, and installed games sorted by size from the About page's Storage tab
+- **Batch Install Queue** — Select multiple games from a store grid and queue them for sequential download and installation
+- **Game Update Detection** — Automatically checks for available updates when viewing an installed game (Epic, GOG, Amazon). Shows an "Update Available" indicator on the play button.
+- **Improved GOG Uninstall** — Properly cleans up gogdl manifest state so games can be reinstalled without manual intervention
 
 ## Installing
 
@@ -79,7 +83,7 @@ These features were added by the community fork:
 - Logan (Beebles) - UI Developer
 
 ### Community Fork
-- Starkka15 - GOG, Amazon, itch.io extensions, cloud save sync, SteamGridDB integration, GE-Proton installer, protonfixes lookup/apply
+- Starkka15 - GOG, Amazon, itch.io extensions, cloud save sync, SteamGridDB integration, GE-Proton installer, protonfixes lookup/apply, storage management, batch install queue, update detection
 
 ## Links
 
