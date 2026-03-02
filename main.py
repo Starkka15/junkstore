@@ -584,6 +584,169 @@ class Plugin:
                 except Exception as e:
                     decky_plugin.logger.warning(f"Failed to remove temp file: {e}")
 
+    async def get_storage_stats(self):
+        try:
+            runtime_dir = decky_plugin.DECKY_PLUGIN_RUNTIME_DIR
+            home = os.path.abspath(decky_plugin.DECKY_USER_HOME)
+
+            STORES = {
+                "GOG": "gog.db",
+                "Epic": "epic.db",
+                "Amazon": "amazon.db",
+                "itch.io": "itchio.db",
+            }
+
+            def parse_size(size_str):
+                if not size_str or not isinstance(size_str, str):
+                    return 0
+                try:
+                    parts = size_str.strip().split()
+                    if len(parts) != 2:
+                        return 0
+                    value = float(parts[0])
+                    unit = parts[1].upper()
+                    if unit == "GB": return int(value * 1024**3)
+                    elif unit == "MB": return int(value * 1024**2)
+                    elif unit == "KB": return int(value * 1024)
+                    return 0
+                except Exception:
+                    return 0
+
+            def fmt_bytes(size):
+                if size >= 1024**3: return f"{size / 1024**3:.2f} GB"
+                elif size >= 1024**2: return f"{size / 1024**2:.2f} MB"
+                elif size >= 1024: return f"{size / 1024:.2f} KB"
+                return f"{size} bytes"
+
+            def dir_size(path):
+                """Calculate total size of a directory by walking it."""
+                total = 0
+                try:
+                    for dirpath, _, filenames in os.walk(path):
+                        for f in filenames:
+                            fp = os.path.join(dirpath, f)
+                            try:
+                                total += os.path.getsize(fp)
+                            except OSError:
+                                pass
+                except OSError:
+                    pass
+                return total
+
+            stores = []
+            all_games = []
+
+            for store_name, db_filename in STORES.items():
+                db_path = os.path.join(runtime_dir, db_filename)
+                if not os.path.exists(db_path):
+                    continue
+                try:
+                    import sqlite3
+                    conn = sqlite3.connect(db_path)
+                    conn.execute("PRAGMA journal_mode=WAL;")
+                    conn.row_factory = sqlite3.Row
+                    c = conn.cursor()
+                    c.execute(
+                        "SELECT ShortName, Title, Size, InstallPath, RootFolder FROM Game "
+                        "WHERE SteamClientID IS NOT NULL AND SteamClientID <> ''"
+                    )
+                    games = c.fetchall()
+                    conn.close()
+
+                    store_total = 0
+                    for g in games:
+                        sb = parse_size(g["Size"])
+                        size_label = g["Size"]
+
+                        # If no size in DB, calculate from install directory
+                        if sb == 0:
+                            game_dir = g["RootFolder"] or g["InstallPath"]
+                            if game_dir and os.path.isdir(game_dir):
+                                sb = dir_size(game_dir)
+                                size_label = fmt_bytes(sb) if sb > 0 else None
+
+                        store_total += sb
+                        all_games.append({
+                            "shortname": g["ShortName"],
+                            "store": store_name,
+                            "title": g["Title"] or g["ShortName"],
+                            "size": size_label or "Unknown",
+                            "size_bytes": sb,
+                        })
+                    stores.append({
+                        "name": store_name,
+                        "size": fmt_bytes(store_total),
+                        "size_bytes": store_total,
+                        "count": len(games),
+                    })
+                except Exception as e:
+                    decky_plugin.logger.error(f"Error reading {store_name} DB: {e}")
+
+            all_games.sort(key=lambda g: g["size_bytes"], reverse=True)
+            stores.sort(key=lambda s: s["size_bytes"], reverse=True)
+            total_used = sum(s["size_bytes"] for s in stores)
+
+            disk_spaces = []
+            try:
+                usage = shutil.disk_usage(home)
+                disk_spaces.append({
+                    "location": "Internal Storage",
+                    "path": home,
+                    "free": fmt_bytes(usage.free),
+                    "free_bytes": usage.free,
+                    "total": fmt_bytes(usage.total),
+                    "total_bytes": usage.total,
+                    "used_percent": round((usage.used / usage.total) * 100, 1),
+                })
+            except Exception:
+                pass
+
+            sd_paths = ["/run/media/mmcblk0p1"]
+            try:
+                for entry in os.scandir("/run/media"):
+                    if entry.is_symlink() or entry.is_dir():
+                        sd_paths.append(entry.path)
+            except Exception:
+                pass
+
+            seen = set()
+            for p in sd_paths:
+                if os.path.exists(p) and os.path.ismount(p):
+                    try:
+                        usage = shutil.disk_usage(p)
+                        if usage.total in seen:
+                            continue
+                        seen.add(usage.total)
+                        disk_spaces.append({
+                            "location": "MicroSD Card",
+                            "path": p,
+                            "free": fmt_bytes(usage.free),
+                            "free_bytes": usage.free,
+                            "total": fmt_bytes(usage.total),
+                            "total_bytes": usage.total,
+                            "used_percent": round((usage.used / usage.total) * 100, 1),
+                        })
+                    except Exception:
+                        pass
+
+            return {
+                "Type": "StorageStats",
+                "Content": {
+                    "total_used": fmt_bytes(total_used),
+                    "total_used_bytes": total_used,
+                    "total_games": sum(s["count"] for s in stores),
+                    "stores": stores,
+                    "games": all_games,
+                    "disk_spaces": disk_spaces,
+                }
+            }
+        except Exception as e:
+            decky_plugin.logger.error(f"Error in get_storage_stats: {e}")
+            return {
+                "Type": "Error",
+                "Content": {"Message": str(e)},
+            }
+
     async def get_logs(self):
         log_dir = decky_plugin.DECKY_PLUGIN_LOG_DIR
         log_files = []

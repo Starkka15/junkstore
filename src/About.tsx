@@ -10,6 +10,7 @@ import { Developer } from "./Developer";
 import { addAchievement, checkAchievements, hasAchievement, hasAchievements } from "./Utils/achievements";
 import { Achievements } from "./Achievements";
 import { FaInfo, FaQ, FaQuestion } from "react-icons/fa6";
+import { StorageTab } from "./StorageTab";
 
 export const About: VFC<{ serverAPI: ServerAPI; }> = ({ serverAPI }) => {
     const [url, setUrl] = useState("");
@@ -148,6 +149,10 @@ export const About: VFC<{ serverAPI: ServerAPI; }> = ({ serverAPI }) => {
                                 </ScrollableWindowRelative>
                             </div>
                         )
+                    },
+                    {
+                        title: "Storage",
+                        content: <StorageTab serverAPI={serverAPI} />
                     },
                     {
                         title: "Dependencies",
