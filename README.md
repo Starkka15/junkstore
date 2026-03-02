@@ -34,7 +34,7 @@ The official Junk-Store project offers its own GOG integration via [Patreon](htt
 
 These features are part of the upstream framework that GameVault is built on:
 
-- **Epic Games Store** — Full integration via Legendary (install, update, verify, repair, cloud saves)
+- **Epic Games Store** — Full integration via Legendary (install, update, verify, repair)
 - **EOS Overlay Management** — Install, update, and remove the Epic Online Services overlay
 - **Per-Game Launch Configuration** — Proton version selection, environment variables, FPS limiting, FSR, ESYNC/FSYNC toggles via the QAM
 - **Platform Config Editor** — Edit game INI/config files directly from Game Mode
@@ -56,7 +56,7 @@ These features were added by the community fork:
 - **Amazon Games Extension** — Full game management via Nile backend
 - **itch.io Extension** — Access purchased and claimed games via API key
 - **SteamGridDB Artwork Fallback** — Automatically fills missing game artwork from SteamGridDB. Set your API key in any store's tab config (gear icon). Images are cached for one-time lookup per game.
-- **Cloud Save Sync (GOG)** — Upload and download save files, with per-game auto-sync toggle
+- **Cloud Save Sync (Epic & GOG)** — Upload and download save files, with per-game auto-sync toggle
 - **GE-Proton Installer** — One-click download and install of the latest GE-Proton from the Dependencies tab
 - **Proton Fixes Lookup** — Look up known fixes for any installed game from the [umu-protonfixes](https://github.com/Open-Wine-Components/umu-protonfixes) database. Falls back to Steam fixes via UMU ID when store-specific fixes aren't available.
 - **Auto-Apply Proton Fixes** — One-click button to automatically apply known environment variable fixes to a game's launch configuration
