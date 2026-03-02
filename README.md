@@ -6,13 +6,13 @@
 
 GameVault lets you access non-Steam games directly from Game Mode. No Desktop Mode required.
 
-Built on the Junk-Store framework, this fork adds community-built store integrations for GOG, Amazon Games, and itch.io alongside the existing Epic Games support.
+Built on the Junk-Store framework, this fork adds community-built store integrations and quality-of-life features on top of the original Epic Games support.
 
 ## Store Integrations
 
-| Store | Backend | Status |
+| Store | Backend | Origin |
 |-------|---------|--------|
-| **Epic Games** | Legendary | Included upstream |
+| **Epic Games** | Legendary | Original (upstream) |
 | **GOG** | lgogdownloader / gogdl | Community extension |
 | **Amazon Games** | Nile | Community extension |
 | **itch.io** | itch.io API | Community extension |
@@ -28,23 +28,38 @@ The official Junk-Store project offers its own GOG integration via [Patreon](htt
 - **Amazon Games** — Install dependencies from the About menu before use. Requires a keyboard to paste the redirect URL during login.
 - **itch.io** — Log in with your itch.io API key. Access your purchased and claimed games.
 
-## Additional Features
+## Features
 
-### SteamGridDB Artwork Fallback
-- Automatically fills missing game artwork from SteamGridDB
-- Set your API key in any store's tab config (gear icon)
-- Images are cached — one-time lookup per game
+### Original (from Junk-Store)
 
-### Cloud Save Sync (Epic & GOG)
-- Upload and download save files for supported games
-- Per-game auto-sync toggle
-- Access from the gear menu on any installed game
+These features are part of the upstream framework that GameVault is built on:
 
-### Per-Game Launch Configuration
-- Proton version selection and environment variable tweaks
-- FPS limiting, FSR, ESYNC/FSYNC toggles via the QAM
-- Run executables directly from game folders
-- Platform config file editor (INI editor)
+- **Epic Games Store** — Full integration via Legendary (install, update, verify, repair, cloud saves)
+- **EOS Overlay Management** — Install, update, and remove the Epic Online Services overlay
+- **Per-Game Launch Configuration** — Proton version selection, environment variables, FPS limiting, FSR, ESYNC/FSYNC toggles via the QAM
+- **Platform Config Editor** — Edit game INI/config files directly from Game Mode
+- **Executable Runner** — Run executables (EXE, BAT, MSI) from game install folders
+- **Protontricks Integration** — Launch Proton Tricks GUI for manual Proton fixes
+- **UMU ID Management** — Update UMU IDs for compatibility tracking
+- **Registry Fix** — Apply Windows registry fixes via Proton (Epic)
+- **Dependency Installer** — One-click install for Proton EasyAntiCheat Runtime and BattlEye Runtime
+- **Import/Move Games** — Manage game storage locations
+- **Custom Backend Support** — Extensible architecture for community store scripts
+- **Developer Mode** — Toggle developer tools and log viewer
+- **Achievements** — Hidden unlockable achievements
+
+### Community Additions (GameVault Fork)
+
+These features were added by the community fork:
+
+- **GOG Store Extension** — Full game management, browser-based login, cloud save sync
+- **Amazon Games Extension** — Full game management via Nile backend
+- **itch.io Extension** — Access purchased and claimed games via API key
+- **SteamGridDB Artwork Fallback** — Automatically fills missing game artwork from SteamGridDB. Set your API key in any store's tab config (gear icon). Images are cached for one-time lookup per game.
+- **Cloud Save Sync (GOG)** — Upload and download save files, with per-game auto-sync toggle
+- **GE-Proton Installer** — One-click download and install of the latest GE-Proton from the Dependencies tab
+- **Proton Fixes Lookup** — Look up known fixes for any installed game from the [umu-protonfixes](https://github.com/Open-Wine-Components/umu-protonfixes) database. Falls back to Steam fixes via UMU ID when store-specific fixes aren't available.
+- **Auto-Apply Proton Fixes** — One-click button to automatically apply known environment variable fixes to a game's launch configuration
 
 ## Installing
 
@@ -64,7 +79,7 @@ The official Junk-Store project offers its own GOG integration via [Patreon](htt
 - Logan (Beebles) - UI Developer
 
 ### Community Fork
-- Starkka15 - GOG, Amazon, itch.io extensions, cloud save sync, SteamGridDB integration
+- Starkka15 - GOG, Amazon, itch.io extensions, cloud save sync, SteamGridDB integration, GE-Proton installer, protonfixes lookup/apply
 
 ## Links
 

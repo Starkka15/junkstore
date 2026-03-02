@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Register actions with the gamevault.sh script
-ACTIONS+=("update-umu-id")
+ACTIONS+=("update-umu-id" "lookup-protonfixes" "apply-protonfixes")
 
 # Register Itchio as a platform with the gamevault.sh script
 PLATFORMS+=("Itchio")
@@ -229,4 +229,14 @@ function Itchio_savetabconfig(){
         echo "$SGDB_KEY" > "${DECKY_PLUGIN_RUNTIME_DIR}/steamgriddb_api_key"
     fi
     echo "{\"Type\": \"Success\", \"Content\": {\"Message\": \"itch.io tab config saved\"}}"
+}
+
+function Itchio_lookup-protonfixes(){
+    TEMP=$(python3 "${DECKY_PLUGIN_DIR}/scripts/proton_tools.py" --lookup "${1}" --store itchio --shortname "${1}" --dbfile "$DBFILE")
+    echo "$TEMP"
+}
+
+function Itchio_apply-protonfixes(){
+    TEMP=$(python3 "${DECKY_PLUGIN_DIR}/scripts/proton_tools.py" --apply "${1}" --store itchio --shortname "${1}" --dbfile "$DBFILE" --platform Proton)
+    echo "$TEMP"
 }

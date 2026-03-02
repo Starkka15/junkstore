@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Register actions with the gamevault.sh script
-ACTIONS+=("install-overlay" "update-overlay" "remove-overlay" "registry-fix" "update-umu-id" "download-saves" "upload-saves" "toggle-autosync")
+ACTIONS+=("install-overlay" "update-overlay" "remove-overlay" "registry-fix" "update-umu-id" "download-saves" "upload-saves" "toggle-autosync" "lookup-protonfixes" "apply-protonfixes")
 
 # Register Epic as a platform with the gamevault.sh script
 PLATFORMS+=("Epic")
@@ -406,6 +406,16 @@ function Epic_savetabconfig(){
         echo "$SGDB_KEY" > "${DECKY_PLUGIN_RUNTIME_DIR}/steamgriddb_api_key"
     fi
     echo "{\"Type\": \"Success\", \"Content\": {\"Message\": \"Epic tab config saved\"}}"
+}
+
+function Epic_lookup-protonfixes(){
+    TEMP=$(python3 "${DECKY_PLUGIN_DIR}/scripts/proton_tools.py" --lookup "${1}" --store egs --shortname "${1}" --dbfile "$DBFILE")
+    echo "$TEMP"
+}
+
+function Epic_apply-protonfixes(){
+    TEMP=$(python3 "${DECKY_PLUGIN_DIR}/scripts/proton_tools.py" --apply "${1}" --store egs --shortname "${1}" --dbfile "$DBFILE" --platform Proton)
+    echo "$TEMP"
 }
 
 function updategamedetailsaftercmd() {

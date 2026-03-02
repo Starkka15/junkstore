@@ -102,6 +102,18 @@
           "Title": "Update UMU Id",
           "Type": "ScriptAction",
           "InstalledOnly": "True"
+        },
+        {
+          "ActionId": "LookupProtonfixes",
+          "Title": "Lookup Proton Fixes",
+          "Type": "ScriptAction",
+          "InstalledOnly": "True"
+        },
+        {
+          "ActionId": "ApplyProtonfixes",
+          "Title": "Apply Known Fixes",
+          "Type": "ScriptActionConfirm",
+          "InstalledOnly": "True"
         }
       ]
     }
@@ -291,6 +303,18 @@
           "Title": "Update UMU Id",
           "Type": "Executable",
           "Command": "./scripts/gamevault.sh Itchio update-umu-id"
+        },
+        {
+          "Id": "LookupProtonfixes",
+          "Title": "Lookup proton fixes",
+          "Type": "Executable",
+          "Command": "./scripts/gamevault.sh Itchio lookup-protonfixes"
+        },
+        {
+          "Id": "ApplyProtonfixes",
+          "Title": "Apply proton fixes",
+          "Type": "Executable",
+          "Command": "./scripts/gamevault.sh Itchio apply-protonfixes"
         }
       ]
     }

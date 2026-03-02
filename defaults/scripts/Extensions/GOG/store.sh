@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Register actions with the gamevault.sh script
-ACTIONS+=("update-umu-id" "download-saves" "upload-saves" "toggle-autosync")
+ACTIONS+=("update-umu-id" "download-saves" "upload-saves" "toggle-autosync" "lookup-protonfixes" "apply-protonfixes")
 
 # Register GOG as a platform with the gamevault.sh script
 PLATFORMS+=("GOG")
@@ -292,6 +292,16 @@ function GOG_savetabconfig(){
         echo "$SGDB_KEY" > "${DECKY_PLUGIN_RUNTIME_DIR}/steamgriddb_api_key"
     fi
     echo "{\"Type\": \"Success\", \"Content\": {\"Message\": \"GOG tab config saved\"}}"
+}
+
+function GOG_lookup-protonfixes(){
+    TEMP=$(python3 "${DECKY_PLUGIN_DIR}/scripts/proton_tools.py" --lookup "${1}" --store gog --shortname "${1}" --dbfile "$DBFILE")
+    echo "$TEMP"
+}
+
+function GOG_apply-protonfixes(){
+    TEMP=$(python3 "${DECKY_PLUGIN_DIR}/scripts/proton_tools.py" --apply "${1}" --store gog --shortname "${1}" --dbfile "$DBFILE" --platform Proton)
+    echo "$TEMP"
 }
 
 function gogupdategamedetailsaftercmd() {

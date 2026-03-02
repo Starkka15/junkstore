@@ -301,6 +301,12 @@ class Helper:
                         websocket=websocket,
                         stream_output=True,
                     )
+                if data["action"] == "install_ge_proton":
+                    await Helper.pyexec_subprocess(
+                        "./scripts/install_ge_proton.sh",
+                        websocket=websocket,
+                        stream_output=True,
+                    )
 
         except Exception as e:
             decky_plugin.logger.error(f"Error in ws_handler: {e}")

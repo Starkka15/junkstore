@@ -192,6 +192,18 @@
           "Title": "Toggle Cloud Save Auto-Sync",
           "Type": "ScriptAction",
           "InstalledOnly": "True"
+        },
+        {
+          "ActionId": "LookupProtonfixes",
+          "Title": "Lookup Proton Fixes",
+          "Type": "ScriptAction",
+          "InstalledOnly": "True"
+        },
+        {
+          "ActionId": "ApplyProtonfixes",
+          "Title": "Apply Known Fixes",
+          "Type": "ScriptActionConfirm",
+          "InstalledOnly": "True"
         }
       ]
     }
@@ -496,6 +508,18 @@
           "Title": "Toggle auto-sync",
           "Type": "ToggleAutoSync",
           "Command": "./scripts/gamevault.sh Epic toggle-autosync"
+        },
+        {
+          "Id": "LookupProtonfixes",
+          "Title": "Lookup proton fixes",
+          "Type": "Executable",
+          "Command": "./scripts/gamevault.sh Epic lookup-protonfixes"
+        },
+        {
+          "Id": "ApplyProtonfixes",
+          "Title": "Apply proton fixes",
+          "Type": "Executable",
+          "Command": "./scripts/gamevault.sh Epic apply-protonfixes"
         }
       ]
     }

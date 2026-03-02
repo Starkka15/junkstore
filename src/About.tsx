@@ -212,6 +212,27 @@ export const About: VFC<{ serverAPI: ServerAPI; }> = ({ serverAPI }) => {
                             </PanelSection>
 
                             <PanelSection>
+                                <DialogButton
+                                    disabled={isInstalling}
+                                    onClick={async () => {
+                                        try {
+                                            logger.debug("Sending message: install_ge_proton");
+                                            if (socket.current) {
+                                                setOutput("");
+                                                setIsInstalling(true);
+                                                socket.current.send(JSON.stringify({ action: "install_ge_proton" }));
+                                            }
+                                        }
+                                        catch (e) {
+                                            logger.debug(e);
+                                        }
+                                    }}
+                                >
+                                    {isInstalling ? "Installing GE-Proton... Do not close this screen." : "Install Latest GE-Proton"}
+                                </DialogButton>
+                            </PanelSection>
+
+                            <PanelSection>
 
                                 <DialogButton
                                     disabled={isInstalling}
