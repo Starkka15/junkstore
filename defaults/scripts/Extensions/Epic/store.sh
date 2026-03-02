@@ -239,6 +239,10 @@ function Epic_getgamedetails(){
     exit 0
 }
 
+function Epic_checkupdate(){
+    TEMP=$($EPICCONF --hasupdates "${1}" --dbfile $DBFILE $OFFLINE_MODE)
+    echo $TEMP
+}
 function Epic_getgamesize(){
     TEMP=$($EPICCONF --get-game-size "${1}" "${2}"  --dbfile $DBFILE)
     echo $TEMP

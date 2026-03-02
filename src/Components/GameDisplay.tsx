@@ -18,7 +18,7 @@ import {
 } from "decky-frontend-lib";
 import { FC, VFC, useEffect, useRef, useState } from "react";
 import { FaCog, FaSlidersH } from "react-icons/fa";
-import { EditorAction, ExecuteGetGameSizeArgs, GameSize, MenuAction, ProgressUpdate } from "../Types/Types";
+import { EditorAction, ExecuteGetGameDetailsArgs, ExecuteGetGameSizeArgs, GameSize, MenuAction, ProgressUpdate } from "../Types/Types";
 import { ConfEditor } from "../ConfEditor";
 import { BatEditor } from "../BatEditor";
 import Logger from "../Utils/logger";
@@ -81,6 +81,7 @@ const GameDisplay: VFC<GameDisplayProperties> = (
     const logger = new Logger("GameDisplay");
     const isInstalled = !!steamClientID;
     const [gameSize, setGameSize] = useState('');
+    const [hasUpdate, setHasUpdate] = useState(false);
 
     logger.log(`initActionSet: ${initActionSet}`);
     const contextMenu = (e: any) => {
@@ -174,11 +175,24 @@ const GameDisplay: VFC<GameDisplayProperties> = (
 
     useEffect(() => {
         setGameSize('');
+        setHasUpdate(false);
         (async () => {
             const gameSizeResult = await executeAction<ExecuteGetGameSizeArgs, GameSize>(serverApi, initActionSet, 'GetGameSize', { shortname: shortName, installed: String(isInstalled) });
             if (!gameSizeResult) return;
             setGameSize(gameSizeResult.Content.Size);
         })();
+        if (isInstalled) {
+            (async () => {
+                try {
+                    const updateResult = await executeAction<ExecuteGetGameDetailsArgs, boolean>(serverApi, initActionSet, 'CheckUpdate', { shortname: shortName });
+                    if (updateResult && updateResult.Content === true) {
+                        setHasUpdate(true);
+                    }
+                } catch (e) {
+                    logger.debug('Update check failed', e);
+                }
+            })();
+        }
     }, [isInstalled]);
 
     const focusableProps: FooterLegendProps = !isInstalled ? {} :
@@ -222,9 +236,18 @@ const GameDisplay: VFC<GameDisplayProperties> = (
                                 </div>
                                 <ProgressBar nProgress={progress.Percentage} />
                             </div>
-                        ) : !!gameSize && (
-                            <div key={'size'} style={{ margin: '0 2px 5px', color: '#969696', fontSize: '11px', lineHeight: '11px', animation: 'fadeIn .3s ease-in-out forwards' }}>
-                                {gameSize}
+                        ) : (
+                            <div key={'size'} style={{ margin: '0 2px 5px', animation: 'fadeIn .3s ease-in-out forwards' }}>
+                                {hasUpdate && (
+                                    <div style={{ color: '#f59e0b', fontSize: '12px', fontWeight: 'bold', marginBottom: '4px' }}>
+                                        Update Available
+                                    </div>
+                                )}
+                                {!!gameSize && (
+                                    <div style={{ color: '#969696', fontSize: '11px', lineHeight: '11px' }}>
+                                        {gameSize}
+                                    </div>
+                                )}
                             </div>
                         )}
                         <Focusable style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '15px', height: '40px' }}>
@@ -237,7 +260,7 @@ const GameDisplay: VFC<GameDisplayProperties> = (
                                     className={installing ? 'DialogButton' : joinClassNames(appActionButtonClasses.PlayButton, appActionButtonClasses.ButtonChild)}
                                     onClick={installing ? cancelInstall : !isInstalled ? installer : runner}
                                 >
-                                    {installing ? 'Cancel' : !isInstalled ? 'Install Game' : 'Play Game'}
+                                    {installing ? 'Cancel' : !isInstalled ? 'Install Game' : hasUpdate ? 'Play Game (Update Available)' : 'Play Game'}
                                 </Button>
                             </div>
                             <div style={{ display: 'flex', gap: '15px', height: '100%' }}>

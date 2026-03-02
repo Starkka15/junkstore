@@ -39,6 +39,8 @@ class AmazonArgs(GameSet.GenericArgs):
         self.parser.add_argument(
             '--flush-cache', help='Flush cache', action='store_true')
         self.parser.add_argument(
+            '--has-updates', help='Check if game has updates available')
+        self.parser.add_argument(
             '--process-fuel-json', help='Process fuel.json to extract exe path for game')
 
     def parseArgs(self):
@@ -77,6 +79,8 @@ class AmazonArgs(GameSet.GenericArgs):
             if self.args.get_base64_images:
                 print(self.gameSet.get_base64_images(
                     self.args.get_base64_images))
+            if self.args.has_updates:
+                print(self.gameSet.has_updates(self.args.has_updates))
             if self.args.update_game_details:
                 self.gameSet.update_game_details(
                     self.args.update_game_details)

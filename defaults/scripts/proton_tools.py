@@ -26,6 +26,7 @@ STORE_MAP = {
     "gog": "gamefixes-gog",
     "epic": "gamefixes-egs",
     "egs": "gamefixes-egs",
+    "ea": "gamefixes-egs",
     "itchio": "gamefixes-itchio",
     "amazon": "gamefixes-amazon",
 }

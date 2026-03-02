@@ -132,6 +132,10 @@ function Amazon_getgamedetails(){
     exit 0
 }
 
+function Amazon_checkupdate(){
+    TEMP=$($AMAZONCONF --has-updates "${1}" --dbfile $DBFILE)
+    echo $TEMP
+}
 function Amazon_getgamesize(){
     TEMP=$($AMAZONCONF --get-game-size "${1}" "${2}"  --dbfile $DBFILE)
     echo $TEMP

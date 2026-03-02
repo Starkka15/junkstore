@@ -311,6 +311,12 @@
           "Command": "./scripts/gamevault.sh Epic getgames"
         },
         {
+          "Id": "CheckUpdate",
+          "Title": "Check for update",
+          "Type": "CheckUpdate",
+          "Command": "./scripts/gamevault.sh Epic checkupdate"
+        },
+        {
           "Id": "GetGameSize",
           "Title": "Get game size",
           "Type": "GameSize",

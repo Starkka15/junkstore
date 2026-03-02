@@ -39,6 +39,8 @@ class GOGArgs(GameSet.GenericArgs):
         self.parser.add_argument(
             '--flush-cache', help='Flush cache', action='store_true')
         self.parser.add_argument(
+            '--has-updates', help='Check if game has updates available')
+        self.parser.add_argument(
             '--get-galaxy-tokens', help='Convert galaxy tokens to gogdl auth format')
         self.parser.add_argument(
             '--process-info-file', help='Process goggame info file to extract exe path')
@@ -89,6 +91,8 @@ class GOGArgs(GameSet.GenericArgs):
             if self.args.get_base64_images:
                 print(self.gameSet.get_base64_images(
                     self.args.get_base64_images))
+            if self.args.has_updates:
+                print(self.gameSet.has_updates(self.args.has_updates))
             if self.args.update_game_details:
                 self.gameSet.update_game_details(
                     self.args.update_game_details)

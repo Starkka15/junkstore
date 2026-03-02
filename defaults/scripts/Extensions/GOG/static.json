@@ -239,6 +239,12 @@
           "Command": "./scripts/gamevault.sh GOG getgames"
         },
         {
+          "Id": "CheckUpdate",
+          "Title": "Check for update",
+          "Type": "CheckUpdate",
+          "Command": "./scripts/gamevault.sh GOG checkupdate"
+        },
+        {
           "Id": "GetGameSize",
           "Title": "Get game size",
           "Type": "GameSize",

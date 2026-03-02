@@ -204,6 +204,37 @@ class GOG(GamesDb.GamesDb):
 
             return json.dumps({client_id: tokens})
 
+    def has_updates(self, game_id):
+        try:
+            # Get remote build info
+            remote_info = self.execute_shell_json(
+                f"{self.gogdl_cmd} --auth-config-path {self.auth_tokens} info {game_id} --os windows")
+            remote_build = remote_info.get('buildId', '')
+
+            # Get local build info from goggame-{id}.info
+            conn = self.get_connection()
+            c = conn.cursor()
+            c.execute("SELECT RootFolder FROM Game WHERE ShortName=?", (game_id,))
+            result = c.fetchone()
+            conn.close()
+
+            if not result or not result[0]:
+                return json.dumps({'Type': 'UpdateAvailable', 'Content': False})
+
+            info_file = os.path.join(result[0], f'goggame-{game_id}.info')
+            if not os.path.exists(info_file):
+                return json.dumps({'Type': 'UpdateAvailable', 'Content': False})
+
+            with open(info_file, 'r') as f:
+                local_info = json.load(f)
+            local_build = local_info.get('buildId', '')
+
+            has_update = remote_build != local_build and remote_build != '' and local_build != ''
+            return json.dumps({'Type': 'UpdateAvailable', 'Content': has_update})
+        except Exception as e:
+            print(f"Error checking GOG updates for {game_id}: {e}", file=sys.stderr)
+            return json.dumps({'Type': 'UpdateAvailable', 'Content': False})
+
     def get_game_size(self, game_id, installed):
         if installed == 'true':
             conn = self.get_connection()

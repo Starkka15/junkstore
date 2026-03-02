@@ -221,6 +221,12 @@
           "Command": "./scripts/gamevault.sh Amazon getgames"
         },
         {
+          "Id": "CheckUpdate",
+          "Title": "Check for update",
+          "Type": "CheckUpdate",
+          "Command": "./scripts/gamevault.sh Amazon checkupdate"
+        },
+        {
           "Id": "GetGameSize",
           "Title": "Get game size",
           "Type": "GameSize",

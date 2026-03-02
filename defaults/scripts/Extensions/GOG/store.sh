@@ -130,6 +130,11 @@ function GOG_uninstall(){
     if [ -d "${GAME_DIR}" ]; then
         rm -rf "${GAME_DIR}"
     fi
+    # Clean up gogdl's installed manifest so it doesn't think the game is still installed
+    GOGDL_MANIFEST="${HOME}/.var/app/com.github.heroic_games_launcher.heroic-gogdl/config/heroic_gogdl/manifests/${1}"
+    if [ -f "${GOGDL_MANIFEST}" ]; then
+        rm -f "${GOGDL_MANIFEST}"
+    fi
     TEMP=$($GOGCONF --clearsteamclientid "${1}" --dbfile $DBFILE)
     echo $TEMP
 
@@ -141,6 +146,10 @@ function GOG_getgamedetails(){
     exit 0
 }
 
+function GOG_checkupdate(){
+    TEMP=$($GOGCONF --has-updates "${1}" --dbfile $DBFILE)
+    echo $TEMP
+}
 function GOG_getgamesize(){
     TEMP=$($GOGCONF --get-game-size "${1}" "${2}"  --dbfile $DBFILE)
     echo $TEMP

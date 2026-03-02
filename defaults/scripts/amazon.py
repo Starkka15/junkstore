@@ -223,6 +223,52 @@ class Amazon(GamesDb.GamesDb):
             print(f"Error adding cache: {e}", file=sys.stderr)
         return value
 
+    def has_updates(self, game_id):
+        try:
+            # Sync library to get latest versions
+            try:
+                self.execute_shell(f"{self.nile_cmd} library sync")
+            except CmdException:
+                pass
+
+            installed_json = os.path.join(self.nile_config_dir, 'installed.json')
+            library_json = os.path.join(self.nile_config_dir, 'library.json')
+
+            if not os.path.exists(installed_json) or not os.path.exists(library_json):
+                return json.dumps({'Type': 'UpdateAvailable', 'Content': False})
+
+            with open(installed_json, 'r') as f:
+                installed = json.load(f)
+            with open(library_json, 'r') as f:
+                library = json.load(f)
+
+            # Find installed version
+            local_version = None
+            for game in installed:
+                if str(game.get('id', '')) == str(game_id):
+                    local_version = game.get('version', '')
+                    break
+
+            if not local_version:
+                return json.dumps({'Type': 'UpdateAvailable', 'Content': False})
+
+            # Find remote version
+            remote_version = None
+            for game in library:
+                product = game.get('product', {})
+                if str(product.get('id', game.get('id', ''))) == str(game_id):
+                    remote_version = product.get('version', game.get('version', ''))
+                    break
+
+            if not remote_version:
+                return json.dumps({'Type': 'UpdateAvailable', 'Content': False})
+
+            has_update = local_version != remote_version
+            return json.dumps({'Type': 'UpdateAvailable', 'Content': has_update})
+        except Exception as e:
+            print(f"Error checking Amazon updates for {game_id}: {e}", file=sys.stderr)
+            return json.dumps({'Type': 'UpdateAvailable', 'Content': False})
+
     def get_game_size(self, game_id, installed):
         if installed == 'true':
             conn = self.get_connection()
