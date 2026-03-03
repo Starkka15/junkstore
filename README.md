@@ -13,7 +13,7 @@ Built on the Junk-Store framework, this fork adds community-built store integrat
 | Store | Backend | Origin |
 |-------|---------|--------|
 | **Epic Games** | Legendary | Original (upstream) |
-| **GOG** | lgogdownloader / gogdl | Community extension |
+| **GOG** | gogdl | Community extension |
 | **Amazon Games** | Nile | Community extension |
 | **itch.io** | itch.io API | Community extension |
 
