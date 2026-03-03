@@ -31,6 +31,7 @@ export const About: VFC<{ serverAPI: ServerAPI; }> = ({ serverAPI }) => {
     const [isUpdating, setIsUpdating] = useState(false);
     const isUpdatingRef = useRef(false);
     const updateTextareaRef = useRef<HTMLTextAreaElement>(null);
+    const [sudoPassword, setSudoPassword] = useState("");
 
     const showDeveloperMode = (show: boolean) => {
         setIsDeveloperMode(show)
@@ -193,10 +194,18 @@ export const About: VFC<{ serverAPI: ServerAPI; }> = ({ serverAPI }) => {
                                                 setUpdateInfo(null);
                                                 try {
                                                     const result = await serverAPI.callPluginMethod<{}, any>("check_for_update", {});
-                                                    if (result.success && result.result?.Type === "UpdateCheck") {
-                                                        setUpdateInfo(result.result.Content);
+                                                    logger.debug("check_for_update result: " + JSON.stringify(result));
+                                                    if (result.success) {
+                                                        const data = result.result;
+                                                        if (data?.Type === "UpdateCheck") {
+                                                            setUpdateInfo(data.Content);
+                                                        } else if (data?.Type === "Error") {
+                                                            setUpdateInfo({ error: data.Content?.Message || "Unknown backend error" });
+                                                        } else {
+                                                            setUpdateInfo({ error: "Unexpected response: " + JSON.stringify(data) });
+                                                        }
                                                     } else {
-                                                        setUpdateInfo({ error: result.result?.Content?.Message || "Failed to check for updates" });
+                                                        setUpdateInfo({ error: "Plugin call failed: " + String(result.result) });
                                                     }
                                                 } catch (e) {
                                                     setUpdateInfo({ error: String(e) });
@@ -235,6 +244,14 @@ export const About: VFC<{ serverAPI: ServerAPI; }> = ({ serverAPI }) => {
                                                             {updateInfo.release_body}
                                                         </div>
                                                     )}
+                                                    <div style={{ marginBottom: "8px" }}>
+                                                        <TextField
+                                                            bIsPassword={true}
+                                                            placeholder="Sudo password (leave blank if none)"
+                                                            value={sudoPassword}
+                                                            onChange={(e) => setSudoPassword(e.target.value)}
+                                                        />
+                                                    </div>
                                                     <DialogButton
                                                         disabled={isUpdating}
                                                         onClick={() => {
@@ -250,6 +267,7 @@ export const About: VFC<{ serverAPI: ServerAPI; }> = ({ serverAPI }) => {
                                                                             socket.current.send(JSON.stringify({
                                                                                 action: "self_update",
                                                                                 download_url: updateInfo.download_url,
+                                                                                sudo_password: sudoPassword,
                                                                             }));
                                                                         }
                                                                     }}

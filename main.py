@@ -282,6 +282,168 @@ class Helper:
                 json.dump(actionSet, f)
 
     @staticmethod
+    async def perform_self_update(download_url, websocket, sudo_password=""):
+        """Download and install a plugin update, then restart Decky Loader."""
+        import time as _time
+
+        async def send(msg):
+            await websocket.send_str(json.dumps({"status": "open", "data": msg, "type": "stdout"}))
+
+        async def sudo_exec(cmd):
+            """Run a command with sudo. Uses -S to read password from stdin if provided."""
+            # Clear LD_LIBRARY_PATH to avoid Decky's bundled libs breaking /bin/sh
+            clean_env = dict(os.environ)
+            clean_env.pop("LD_LIBRARY_PATH", None)
+            clean_env.pop("LD_PRELOAD", None)
+            if sudo_password:
+                proc = await asyncio.create_subprocess_shell(
+                    f"sudo -S {cmd}",
+                    stdin=asyncio.subprocess.PIPE,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                    env=clean_env,
+                )
+                stdout, stderr = await proc.communicate((sudo_password + "\n").encode())
+            else:
+                proc = await asyncio.create_subprocess_shell(
+                    f"sudo {cmd}",
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                    env=clean_env,
+                )
+                stdout, stderr = await proc.communicate()
+            if proc.returncode != 0:
+                err = stderr.decode().strip()
+                await send(f"sudo debug: rc={proc.returncode} stderr={err}\n")
+                raise RuntimeError(f"sudo failed (rc={proc.returncode}): {err}")
+
+        plugin_dir = decky_plugin.DECKY_PLUGIN_DIR
+        tmp_zip = "/tmp/gamevault_update.zip"
+        tmp_extract = "/tmp/gamevault_update_extract"
+        backup_dir = f"/tmp/gamevault_backup_{int(_time.time())}"
+
+        try:
+            # Verify sudo access first
+            await send("Verifying sudo access...\n")
+            try:
+                await sudo_exec("true")
+            except RuntimeError:
+                await send("ERROR: sudo authentication failed. Check your password.\n")
+                await websocket.send_str(json.dumps({"status": "closed", "data": ""}))
+                return
+
+            await send("===================================\n")
+            await send("  GameVault Self-Update\n")
+            await send("  Do not navigate away please...\n")
+            await send("===================================\n\n")
+
+            # Step 1: Download
+            await send("[1/5] Downloading update...\n")
+            try:
+                async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
+                    async with session.get(download_url, allow_redirects=True) as response:
+                        if response.status != 200:
+                            await send(f"ERROR: Download failed with status {response.status}. No changes made.\n")
+                            await websocket.send_str(json.dumps({"status": "closed", "data": ""}))
+                            return
+                        with open(tmp_zip, "wb") as f:
+                            while True:
+                                chunk = await response.content.readany()
+                                if not chunk:
+                                    break
+                                f.write(chunk)
+            except Exception as e:
+                await send(f"ERROR: Download failed: {e}. No changes made.\n")
+                await websocket.send_str(json.dumps({"status": "closed", "data": ""}))
+                return
+
+            # Step 2: Validate zip
+            await send("[2/5] Validating download...\n")
+            try:
+                with zipfile.ZipFile(tmp_zip, "r") as zf:
+                    bad = zf.testzip()
+                    if bad is not None:
+                        await send(f"ERROR: Corrupt file in zip: {bad}. No changes made.\n")
+                        os.remove(tmp_zip)
+                        await websocket.send_str(json.dumps({"status": "closed", "data": ""}))
+                        return
+            except zipfile.BadZipFile:
+                await send("ERROR: Downloaded file is not a valid zip. No changes made.\n")
+                os.remove(tmp_zip)
+                await websocket.send_str(json.dumps({"status": "closed", "data": ""}))
+                return
+
+            # Step 3: Backup
+            await send(f"[3/5] Backing up to {backup_dir}...\n")
+            await sudo_exec(f"cp -a {shlex.quote(plugin_dir)} {shlex.quote(backup_dir)}")
+            await send("Backup created.\n")
+
+            # Step 4: Extract to temp (no sudo needed), then sudo copy into plugin dir
+            await send("[4/5] Installing update...\n")
+            if os.path.exists(tmp_extract):
+                shutil.rmtree(tmp_extract)
+            os.makedirs(tmp_extract)
+
+            with zipfile.ZipFile(tmp_zip, "r") as zf:
+                zf.extractall(tmp_extract)
+
+            # GitHub zipball extracts into a subdirectory (owner-repo-hash/)
+            subdirs = [d for d in os.listdir(tmp_extract) if os.path.isdir(os.path.join(tmp_extract, d))]
+            if not subdirs:
+                await send("ERROR: Could not find extracted directory. Backup preserved.\n")
+                shutil.rmtree(tmp_extract, ignore_errors=True)
+                os.remove(tmp_zip)
+                await websocket.send_str(json.dumps({"status": "closed", "data": ""}))
+                return
+            extracted_dir = os.path.join(tmp_extract, subdirs[0])
+
+            # Remove replaceable dirs
+            for dirname in ["dist", "scripts", "py_modules", "conf_schemas"]:
+                target = os.path.join(plugin_dir, dirname)
+                if os.path.exists(target):
+                    await sudo_exec(f"rm -rf {shlex.quote(target)}")
+                    await send(f"  Removed old {dirname}/\n")
+
+            # Remove replaceable root files
+            for fname in ["main.py", "plugin.json", "package.json", "LICENSE", "README.md"]:
+                target = os.path.join(plugin_dir, fname)
+                if os.path.exists(target):
+                    await sudo_exec(f"rm -f {shlex.quote(target)}")
+
+            # Copy new files into plugin dir
+            await sudo_exec(f"cp -a {shlex.quote(extracted_dir)}/. {shlex.quote(plugin_dir)}/")
+
+            # chmod scripts
+            for scripts_subdir in ["scripts", os.path.join("defaults", "scripts")]:
+                scripts_path = os.path.join(plugin_dir, scripts_subdir)
+                if os.path.exists(scripts_path):
+                    await sudo_exec(f"find {shlex.quote(scripts_path)} -type f -exec chmod 755 {{}} \\;")
+
+            await send("[5/5] Update installed successfully!\n")
+
+            # Cleanup temp files
+            shutil.rmtree(tmp_extract, ignore_errors=True)
+            if os.path.exists(tmp_zip):
+                os.remove(tmp_zip)
+
+            await send("\n===================================\n")
+            await send("  Update complete!\n")
+            await send("  Restarting Decky Loader...\n")
+            await send("===================================\n")
+            await websocket.send_str(json.dumps({"status": "closed", "data": ""}))
+
+            # Restart Decky Loader
+            await sudo_exec("systemctl restart plugin_loader.service")
+
+        except Exception as e:
+            decky_plugin.logger.error(f"Self-update failed: {e}")
+            try:
+                await send(f"\nERROR: {e}\n")
+                await websocket.send_str(json.dumps({"status": "closed", "data": ""}))
+            except Exception:
+                pass
+
+    @staticmethod
     async def ws_handler(request):
         websocket = web.WebSocketResponse()
         await websocket.prepare(request)
@@ -310,12 +472,9 @@ class Helper:
                     )
                 if data["action"] == "self_update":
                     download_url = data.get("download_url", "")
+                    sudo_password = data.get("sudo_password", "")
                     if download_url:
-                        await Helper.pyexec_subprocess(
-                            f"./scripts/self_update.sh {shlex.quote(download_url)}",
-                            websocket=websocket,
-                            stream_output=True,
-                        )
+                        await Helper.perform_self_update(download_url, websocket, sudo_password)
 
         except Exception as e:
             decky_plugin.logger.error(f"Error in ws_handler: {e}")
@@ -528,8 +687,12 @@ class Plugin:
 
             update_available = version_tuple(latest_version) > version_tuple(current_version)
 
-            # Find the zip asset (source code zip from GitHub)
-            download_url = release.get("zipball_url", "")
+            # Find the built GameVault.zip release asset (not the source zipball)
+            download_url = ""
+            for asset in release.get("assets", []):
+                if asset.get("name", "").endswith(".zip"):
+                    download_url = asset.get("browser_download_url", "")
+                    break
 
             return {
                 "Type": "UpdateCheck",
