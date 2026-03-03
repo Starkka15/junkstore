@@ -12,6 +12,8 @@ import { Achievements } from "./Achievements";
 import { FaInfo, FaQ, FaQuestion } from "react-icons/fa6";
 import { StorageTab } from "./StorageTab";
 
+declare const __PLUGIN_VERSION__: string;
+
 export const About: VFC<{ serverAPI: ServerAPI; }> = ({ serverAPI }) => {
     const [url, setUrl] = useState("");
     const [backup, setBackup] = useState("false");
@@ -23,6 +25,12 @@ export const About: VFC<{ serverAPI: ServerAPI; }> = ({ serverAPI }) => {
     const [isInstalling, setIsInstalling] = useState(false);
     const [isDownloading, setIsDownloading] = useState(false);
     const [isDeveloperMode, setIsDeveloperMode] = useState(localStorage.getItem('gv_developermode') === "true");
+    const [updateInfo, setUpdateInfo] = useState<any>(null);
+    const [updateChecking, setUpdateChecking] = useState(false);
+    const [updateOutput, setUpdateOutput] = useState("");
+    const [isUpdating, setIsUpdating] = useState(false);
+    const isUpdatingRef = useRef(false);
+    const updateTextareaRef = useRef<HTMLTextAreaElement>(null);
 
     const showDeveloperMode = (show: boolean) => {
         setIsDeveloperMode(show)
@@ -70,13 +78,24 @@ export const About: VFC<{ serverAPI: ServerAPI; }> = ({ serverAPI }) => {
                 logger.debug("Received message: " + event.data);
 
                 const message = JSON.parse(event.data)
-                // Update the UI with the received output
-                setOutput((prevOutput) => prevOutput + message.data + "\n");
-                if (textareaRef.current !== null) {
-                    textareaRef.current.scrollTop = textareaRef.current.scrollHeight;
-                }
-                if (message.status === "closed") {
-                    setIsInstalling(false)
+                if (isUpdatingRef.current) {
+                    setUpdateOutput((prev) => prev + message.data + "\n");
+                    if (updateTextareaRef.current !== null) {
+                        updateTextareaRef.current.scrollTop = updateTextareaRef.current.scrollHeight;
+                    }
+                    if (message.status === "closed") {
+                        setIsUpdating(false);
+                        isUpdatingRef.current = false;
+                    }
+                } else {
+                    // Update the UI with the received output
+                    setOutput((prevOutput) => prevOutput + message.data + "\n");
+                    if (textareaRef.current !== null) {
+                        textareaRef.current.scrollTop = textareaRef.current.scrollHeight;
+                    }
+                    if (message.status === "closed") {
+                        setIsInstalling(false)
+                    }
                 }
             };
         });
@@ -117,6 +136,8 @@ export const About: VFC<{ serverAPI: ServerAPI; }> = ({ serverAPI }) => {
                                     <div style={{ padding: '5px 0' }}>
                                         <div>
                                             <h2>GameVault</h2>
+                                            <span style={{ fontSize: "14px", color: "#8b929a" }}>v{__PLUGIN_VERSION__}</span>
+                                            <br />
                                             An open and extensible multi-store game launcher for Steam Deck. Access Epic, GOG, Amazon, and itch.io games directly from Game Mode.
                                             <br />
                                             <br />
@@ -153,6 +174,121 @@ export const About: VFC<{ serverAPI: ServerAPI; }> = ({ serverAPI }) => {
                     {
                         title: "Storage",
                         content: <StorageTab serverAPI={serverAPI} />
+                    },
+                    {
+                        title: "Updates",
+                        content: (
+                            <div style={{ padding: '0 15px', height: '100%', display: 'flex' }}>
+                                <ScrollableWindowRelative>
+                                    <PanelSection>
+                                        <div style={{ marginBottom: "10px" }}>
+                                            <span style={{ fontSize: "14px", color: "#8b929a" }}>
+                                                Current version: v{__PLUGIN_VERSION__}
+                                            </span>
+                                        </div>
+                                        <DialogButton
+                                            disabled={updateChecking || isUpdating}
+                                            onClick={async () => {
+                                                setUpdateChecking(true);
+                                                setUpdateInfo(null);
+                                                try {
+                                                    const result = await serverAPI.callPluginMethod<{}, any>("check_for_update", {});
+                                                    if (result.success && result.result?.Type === "UpdateCheck") {
+                                                        setUpdateInfo(result.result.Content);
+                                                    } else {
+                                                        setUpdateInfo({ error: result.result?.Content?.Message || "Failed to check for updates" });
+                                                    }
+                                                } catch (e) {
+                                                    setUpdateInfo({ error: String(e) });
+                                                }
+                                                setUpdateChecking(false);
+                                            }}
+                                        >
+                                            {updateChecking ? "Checking..." : "Check for Updates"}
+                                        </DialogButton>
+                                    </PanelSection>
+
+                                    {updateInfo && !updateInfo.error && (
+                                        <PanelSection>
+                                            {updateInfo.update_available ? (
+                                                <div>
+                                                    <div style={{ marginBottom: "8px" }}>
+                                                        <strong>Update available: v{updateInfo.latest_version}</strong>
+                                                    </div>
+                                                    {updateInfo.release_name && (
+                                                        <div style={{ marginBottom: "4px", fontSize: "14px" }}>
+                                                            {updateInfo.release_name}
+                                                        </div>
+                                                    )}
+                                                    {updateInfo.release_body && (
+                                                        <div style={{
+                                                            marginBottom: "10px",
+                                                            fontSize: "13px",
+                                                            color: "#b8bcbf",
+                                                            whiteSpace: "pre-wrap",
+                                                            maxHeight: "200px",
+                                                            overflowY: "auto",
+                                                            padding: "8px",
+                                                            background: "rgba(0,0,0,0.2)",
+                                                            borderRadius: "4px",
+                                                        }}>
+                                                            {updateInfo.release_body}
+                                                        </div>
+                                                    )}
+                                                    <DialogButton
+                                                        disabled={isUpdating}
+                                                        onClick={() => {
+                                                            showModal(
+                                                                <ConfirmModal
+                                                                    strTitle="Install Update"
+                                                                    strDescription={`Update to v${updateInfo.latest_version}? This will restart Decky Loader.`}
+                                                                    onOK={() => {
+                                                                        if (socket.current) {
+                                                                            setUpdateOutput("");
+                                                                            setIsUpdating(true);
+                                                                            isUpdatingRef.current = true;
+                                                                            socket.current.send(JSON.stringify({
+                                                                                action: "self_update",
+                                                                                download_url: updateInfo.download_url,
+                                                                            }));
+                                                                        }
+                                                                    }}
+                                                                />
+                                                            );
+                                                        }}
+                                                    >
+                                                        {isUpdating ? "Updating... Do not close this screen." : "Install Update"}
+                                                    </DialogButton>
+                                                </div>
+                                            ) : (
+                                                <div style={{ color: "#8b929a" }}>
+                                                    You are running the latest version (v{updateInfo.current_version}).
+                                                </div>
+                                            )}
+                                        </PanelSection>
+                                    )}
+
+                                    {updateInfo?.error && (
+                                        <PanelSection>
+                                            <div style={{ color: "#d94141" }}>
+                                                Error: {updateInfo.error}
+                                            </div>
+                                        </PanelSection>
+                                    )}
+
+                                    {(isUpdating || updateOutput) && (
+                                        <PanelSection>
+                                            <textarea
+                                                ref={updateTextareaRef}
+                                                style={{ width: "100%", height: "200px", marginTop: "10px" }}
+                                                value={updateOutput}
+                                                readOnly
+                                            />
+                                        </PanelSection>
+                                    )}
+                                </ScrollableWindowRelative>
+                            </div>
+                        )
                     },
                     {
                         title: "Dependencies",

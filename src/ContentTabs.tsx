@@ -1,5 +1,5 @@
 import { DialogBody, DialogControlsSection, ServerAPI, SidebarNavigation, SidebarNavigationPage, Tab, Tabs } from "decky-frontend-lib";
-import { VFC, useEffect, useState } from "react";
+import { VFC, useEffect, useRef, useState } from "react";
 import { ActionSet, ContentType, ContentError, ContentResult, ExecuteArgs, ExecuteGetContentArgs, StoreContent, StoreTabsContent, GameDataList } from "./Types/Types";
 import Logger from "./Utils/logger";
 import { executeAction } from "./Utils/executeAction";
@@ -67,6 +67,10 @@ export const ContentTabs: VFC<ContentTabsProperties> = ({ serverAPI, content, in
     );
 };
 
+// In-memory content cache: avoids re-fetching game lists on tab switches
+const contentCache: Map<string, { data: ContentResult<ContentType>; actionSet: string; time: number }> = new Map();
+const CONTENT_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 export const Content: VFC<{ serverAPI: ServerAPI; initActionSet: string; initAction: string; closeModal?: ()=>void}> = ({ serverAPI, initActionSet, initAction, closeModal }) => {
     const logger = new Logger("Content");
     const [content, setContent] = useState<ContentResult<ContentType>>({ Type: "Empty", Content: {} });
@@ -85,19 +89,29 @@ export const Content: VFC<{ serverAPI: ServerAPI; initActionSet: string; initAct
     useEffect(() => {
         (async () => {
             try {
+                // Check in-memory cache first
+                const cacheKey = `${initActionSet}_${initAction}_${JSON.stringify(hadGridCache ? gridContentCache : {})}`;
+                const cached = contentCache.get(cacheKey);
+                if (cached && (Date.now() - cached.time) < CONTENT_CACHE_TTL) {
+                    setActionSetName(cached.actionSet);
+                    setContent(cached.data);
+                    return;
+                }
+
                 logger.debug(`Initializing Content with initActionSet: ${initActionSet} and initAction: ${initAction}`);
                 const actionSetRes = await executeAction<ExecuteArgs,ActionSet>(serverAPI, initActionSet, initAction, {});
                 logger.debug("init result: ", actionSetRes);
                 if (actionSetRes === null) return;
 
                 const actionSet = actionSetRes.Content;
-                logger.debug(`Getting Content ${hadGridCache ? 'with args cache' : ''}`, hadGridCache ? gridContentCache : '');
                 const contentRes = await getContent(actionSet.SetName, hadGridCache ? stringifyArgs(gridContentCache) : {});
-                logger.debug("GetContent result: ", contentRes);
                 if (contentRes === null) return;
 
                 setActionSetName(actionSet.SetName);
                 setContent(contentRes);
+
+                // Store in cache
+                contentCache.set(cacheKey, { data: contentRes, actionSet: actionSet.SetName, time: Date.now() });
             } catch (error) {
                 logger.error("OnInit: ", error);
             }
@@ -112,6 +126,9 @@ export const Content: VFC<{ serverAPI: ServerAPI; initActionSet: string; initAct
             const contentRes = await getContent(actionSetName, stringifyArgs(args));
             if (contentRes !== null) {
                 setContent(contentRes);
+                // Update cache with fresh data
+                const cacheKey = `${initActionSet}_${initAction}_${JSON.stringify(args)}`;
+                contentCache.set(cacheKey, { data: contentRes, actionSet: actionSetName, time: Date.now() });
             }
             onFinish?.();
         })();

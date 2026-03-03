@@ -18,8 +18,12 @@ export async function executeAction<Arguments extends ExecuteArgs, Content exten
         ...args
     });
 
-    if (!res.success) { //TODO: need to handle server response errors as well, idk if you wanna make it show the modal too
-        //const errorMsg = res.result;
+    if (!res.success) {
+        logger.error("Server error:", res.result);
+        serverAPI.toaster.toast({
+            title: "GameVault",
+            body: `Action failed: ${actionName}`,
+        });
         return null;
     }
 

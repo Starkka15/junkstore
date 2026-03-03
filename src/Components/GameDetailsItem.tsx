@@ -23,30 +23,21 @@ interface GameDetailsItemProperties {
 export const GameDetailsItem: VFC<GameDetailsItemProperties> = ({ serverAPI, shortname, initActionSet, closeModal }) => {
 
     const logger = new Logger("GameDetailsItem");
-    logger.log("GameDetailsItem startup");
     const [scriptActions, setScriptActions] = useState<MenuAction[]>([]);
     const [gameData, setGameData] = useState<ContentResult<GameDetails | EmptyContent>>({ Type: "Empty", Content: { Details: {} } });
-    logger.log("GameDetailsItem gameData", gameData);
     const [steamClientID, setSteamClientID] = useState("");
-    logger.log("GameDetailsItem steamClientID", steamClientID);
     const [installing, setInstalling] = useState(false);
-    logger.log("GameDetailsItem installing", installing);
     const [shouldUpdateShortcut, setShouldUpdateShortcut] = useState(false);
-    logger.log("GameDetailsItem shouldUpdateshortcut", shouldUpdateShortcut);
 
     const originRoute = location.pathname.replace('/routes', '');
-    // useEffect(() => reaction(() => SteamUIStore.WindowStore.GamepadUIMainWindowInstance?.LocationPathName, closeModal), []);
 
     const [progress, setProgress] = useState<ProgressUpdate>({
         Percentage: 0,
         Description: ""
     });
-    logger.log("GameDetailsItem progress", progress);
 
     const installingRef = useRef(installing);
-    logger.log("GameDetailsItem installingRef", installingRef);
     useEffect(() => {
-        logger.log("GameDetailsItem installingRef.current = installing");
         installingRef.current = installing;
     }, [installing]);
 
@@ -54,7 +45,6 @@ export const GameDetailsItem: VFC<GameDetailsItemProperties> = ({ serverAPI, sho
 
     //const [] = useState("Play Game");
     useEffect(() => {
-        logger.log("GameDetailsItem onInit");
         reaction(() => SteamUIStore.WindowStore.GamepadUIMainWindowInstance?.LocationPathName, closeModal)
         onInit();
     }, []);
@@ -103,10 +93,7 @@ export const GameDetailsItem: VFC<GameDetailsItemProperties> = ({ serverAPI, sho
 
     const updateProgress = async () => {
         while (installingRef.current) {
-            logger.debug("updateProgress loop starting");
             try {
-                logger.debug("updateProgress");
-
                 const progressUpdateResponse = await executeAction<ExecuteGetGameDetailsArgs, ProgressUpdate>(
                     serverAPI,
                     initActionSet,
@@ -120,9 +107,7 @@ export const GameDetailsItem: VFC<GameDetailsItemProperties> = ({ serverAPI, sho
                 }
                 const progressUpdate = progressUpdateResponse.Content;
                 if (progressUpdate != null) {
-                    logger.debug(progressUpdate);
                     setProgress(progressUpdate);
-                    logger.debug(progressUpdate.Percentage);
                     if (progressUpdate.Error != null) {
                         showModal(<ErrorModal Error={{ ActionName: "GetProgress", ActionSet: initActionSet, Message: "Installation failed", Data: progressUpdate.Error ?? "" } as ContentError} />);
                         cancelInstall();
@@ -146,9 +131,7 @@ export const GameDetailsItem: VFC<GameDetailsItemProperties> = ({ serverAPI, sho
                 logger.error('Error in progress updater', e);
             }
 
-            logger.debug("sleeping");
             await sleep(1000);
-            logger.debug("woke up");
         }
     };
 
@@ -156,10 +139,7 @@ export const GameDetailsItem: VFC<GameDetailsItemProperties> = ({ serverAPI, sho
 
     useEffect(() => {
         if (installing) {
-            logger.log("GameDetailsItem updateProgress");
-            updateProgress().then(() => {
-                logger.log("GameDetailsItem updateProgress finished");
-            });
+            updateProgress();
         }
     }, [installing]);
     const uninstall = async () => {
@@ -214,6 +194,7 @@ export const GameDetailsItem: VFC<GameDetailsItemProperties> = ({ serverAPI, sho
     };
     const cancelInstall = async () => {
         try {
+            installingRef.current = false;
             setInstalling(false);
             await executeAction(
                 serverAPI,

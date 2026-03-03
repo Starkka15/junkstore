@@ -106,6 +106,21 @@ class InstallQueue {
         this.state.isProcessing = false;
         this.state.currentIndex = -1;
         this.notify();
+
+        // Toast completion summary
+        if (this.serverAPI) {
+            const done = this.state.items.filter(i => i.status === "done").length;
+            const errors = this.state.items.filter(i => i.status === "error").length;
+            const total = done + errors;
+            if (total > 0) {
+                this.serverAPI.toaster.toast({
+                    title: "Batch Install Complete",
+                    body: errors > 0
+                        ? `${done}/${total} games installed (${errors} failed)`
+                        : `${done} game${done > 1 ? 's' : ''} installed successfully`,
+                });
+            }
+        }
     }
 
     private async processItem(item: QueueItem) {
@@ -128,9 +143,11 @@ class InstallQueue {
                 return;
             }
 
-            // Step 2: Poll progress
+            // Step 2: Poll progress (adaptive interval)
+            let lastProgress = 0;
+            let pollInterval = 1000;
             while (!this.cancelled) {
-                await sleep(1500);
+                await sleep(pollInterval);
                 if (this.cancelled) break;
 
                 const progressResult = await executeAction<ExecuteGetGameDetailsArgs, ProgressUpdate>(
@@ -152,6 +169,14 @@ class InstallQueue {
                 this.notify();
 
                 if (progress.Percentage >= 100) break;
+
+                // Adaptive polling: slow down if progress isn't moving
+                if (progress.Percentage === lastProgress) {
+                    pollInterval = Math.min(pollInterval + 500, 5000);
+                } else {
+                    pollInterval = 1000;
+                }
+                lastProgress = progress.Percentage;
             }
 
             if (this.cancelled) {

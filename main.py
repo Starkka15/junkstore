@@ -17,6 +17,7 @@ class Helper:
     websocket_port = 8765
     action_cache = {}
     working_directory = decky_plugin.DECKY_PLUGIN_RUNTIME_DIR
+    dir_size_cache = {}  # path -> (size, timestamp)
 
     ws_loop = None
     app = None
@@ -307,6 +308,14 @@ class Helper:
                         websocket=websocket,
                         stream_output=True,
                     )
+                if data["action"] == "self_update":
+                    download_url = data.get("download_url", "")
+                    if download_url:
+                        await Helper.pyexec_subprocess(
+                            f"./scripts/self_update.sh {shlex.quote(download_url)}",
+                            websocket=websocket,
+                            stream_output=True,
+                        )
 
         except Exception as e:
             decky_plugin.logger.error(f"Error in ws_handler: {e}")
@@ -482,6 +491,64 @@ class Plugin:
     async def get_websocket_port(self):
         return Helper.websocket_port
 
+    async def get_plugin_version(self):
+        try:
+            pkg_path = os.path.join(decky_plugin.DECKY_PLUGIN_DIR, "package.json")
+            with open(pkg_path, "r") as f:
+                data = json.load(f)
+            return data.get("version", "unknown")
+        except Exception as e:
+            decky_plugin.logger.error(f"Error reading plugin version: {e}")
+            return "unknown"
+
+    async def check_for_update(self):
+        try:
+            pkg_path = os.path.join(decky_plugin.DECKY_PLUGIN_DIR, "package.json")
+            with open(pkg_path, "r") as f:
+                data = json.load(f)
+            current_version = data.get("version", "0.0.0")
+
+            api_url = "https://api.github.com/repos/Starkka15/junkstore/releases/latest"
+            async with aiohttp.ClientSession(
+                connector=aiohttp.TCPConnector(ssl=False)
+            ) as session:
+                async with session.get(api_url, headers={"Accept": "application/vnd.github.v3+json"}) as response:
+                    if response.status != 200:
+                        return {
+                            "Type": "Error",
+                            "Content": {"Message": f"GitHub API returned status {response.status}"},
+                        }
+                    release = await response.json()
+
+            latest_tag = release.get("tag_name", "")
+            latest_version = latest_tag.lstrip("v")
+
+            def version_tuple(v):
+                return tuple(int(x) for x in v.split("."))
+
+            update_available = version_tuple(latest_version) > version_tuple(current_version)
+
+            # Find the zip asset (source code zip from GitHub)
+            download_url = release.get("zipball_url", "")
+
+            return {
+                "Type": "UpdateCheck",
+                "Content": {
+                    "current_version": current_version,
+                    "latest_version": latest_version,
+                    "update_available": update_available,
+                    "download_url": download_url,
+                    "release_name": release.get("name", ""),
+                    "release_body": release.get("body", ""),
+                },
+            }
+        except Exception as e:
+            decky_plugin.logger.error(f"Error checking for update: {e}")
+            return {
+                "Type": "Error",
+                "Content": {"Message": str(e)},
+            }
+
     # ...
 
     async def execute_action(
@@ -618,8 +685,13 @@ class Plugin:
                 elif size >= 1024: return f"{size / 1024:.2f} KB"
                 return f"{size} bytes"
 
+            import time as _time
             def dir_size(path):
-                """Calculate total size of a directory by walking it."""
+                """Calculate total size of a directory by walking it. Cached for 5 minutes."""
+                now = _time.time()
+                cached = Helper.dir_size_cache.get(path)
+                if cached and (now - cached[1]) < 300:
+                    return cached[0]
                 total = 0
                 try:
                     for dirpath, _, filenames in os.walk(path):
@@ -631,6 +703,7 @@ class Plugin:
                                 pass
                 except OSError:
                     pass
+                Helper.dir_size_cache[path] = (total, now)
                 return total
 
             stores = []

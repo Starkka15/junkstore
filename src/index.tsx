@@ -63,9 +63,7 @@ export default definePlugin((serverApi: ServerAPI) => {
     addAchievement("MTAx")
   }
   const currentDate = new Date();
-  const currentDay = currentDate.getDay();
-  const currentMonth = currentDate.getMonth() + 1;
-  if (currentDay === 5 && currentMonth === 13) {
+  if (currentDate.getDay() === 5 && currentDate.getDate() === 13) {
     addAchievement("MTEw")
   }
 

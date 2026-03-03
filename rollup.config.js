@@ -7,6 +7,7 @@ import { defineConfig } from "rollup";
 import importAssets from "rollup-plugin-import-assets";
 
 import { name } from "./plugin.json";
+import { version } from "./package.json";
 
 export default defineConfig({
   input: "./src/index.tsx",
@@ -18,6 +19,7 @@ export default defineConfig({
     replace({
       preventAssignment: false,
       "process.env.NODE_ENV": JSON.stringify("production"),
+      "__PLUGIN_VERSION__": JSON.stringify(version),
     }),
     importAssets({
       publicPath: `http://127.0.0.1:1337/plugins/${name}/`,

@@ -1,6 +1,6 @@
 import { DialogButton, Focusable, Menu, MenuItem, Navigation, ProgressBar, ServerAPI, Spinner, TextField, gamepadTabbedPageClasses, showContextMenu, showModal } from "decky-frontend-lib";
 import { ContentResult, ContentType, ExecuteArgs, GameData, GameDataList, MenuAction, ScriptActions } from "../Types/Types";
-import { Dispatch, SetStateAction, VFC, memo, useEffect, useState } from "react";
+import { Dispatch, SetStateAction, VFC, memo, useEffect, useRef, useState } from "react";
 import GameGridItem from './GameGridItem';
 import { GameDetailsItem } from './GameDetailsItem';
 import Logger from "../Utils/logger";
@@ -41,6 +41,7 @@ export const GridContent: VFC<GridContentProps> = ({ content, serverAPI, initAct
     const [installedFilterLoading, setInstalledLoading] = useState(false);
     const [scriptActions, setScriptActions] = useState<MenuAction[] | null>();
     const [filter, setFilter] = useState(argsCache.filter);
+    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [selectMode, setSelectMode] = useState(false);
     const [selectedGames, setSelectedGames] = useState<Set<string>>(new Set());
     const [queueState, setQueueState] = useState<QueueState>(installQueue.getState());
@@ -168,8 +169,10 @@ export const GridContent: VFC<GridContentProps> = ({ content, serverAPI, initAct
                         placeholder="Search"
                         value={filter}
                         onChange={(e) => {
-                            updateCache('filter', e.target.value);
-                            setFilter(e.target.value);
+                            const val = e.target.value;
+                            setFilter(val);
+                            if (debounceRef.current) clearTimeout(debounceRef.current);
+                            debounceRef.current = setTimeout(() => updateCache('filter', val), 400);
                         }}
                     />
                 </div>

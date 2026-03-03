@@ -142,12 +142,6 @@ export interface SectionEditorProps {
   section: Section;
   onChange: (section: Section) => void;
 }
-export interface GameData {
-  id: number;
-  name: string;
-  image: string;
-  shortname: string;
-}
 // export interface ActionSetContent extends Content {
 //   ActionSet: ActionSet;
 
