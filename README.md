@@ -24,7 +24,7 @@ The official Junk-Store project offers its own GOG integration via [Patreon](htt
 ### Setup Notes
 
 - **Epic Games** — Works out of the box. Log in from the plugin.
-- **GOG** — Install dependencies from the About menu before use. Requires a keyboard for browser-based login.
+- **GOG** — Install dependencies from the About menu before use. Requires a keyboard to paste the redirect URL during login.
 - **Amazon Games** — Install dependencies from the About menu before use. Requires a keyboard to paste the redirect URL during login.
 - **itch.io** — Log in with your itch.io API key. Access your purchased and claimed games.
 
