@@ -21,7 +21,9 @@ class GOG(GamesDb.GamesDb):
         super().__init__(db_file, storeName=storeName, setNameConfig=setNameConfig)
         self.storeURL = "https://www.gog.com/"
 
-    lgogdl_cmd = os.environ.get('LGOGDL', '/bin/flatpak run com.github.sude_.lgogdownloader')
+    GOG_CLIENT_ID = '46899977096215655'
+    GOG_CLIENT_SECRET = '9d85c43b1482497dbbce61f6e4aa173a433796eeae2ca8c5f6129f2dc4de46d9'
+
     gogdl_cmd = os.environ.get('GOGDL', '/bin/flatpak run com.github.heroic_games_launcher.heroic-gogdl')
     auth_tokens = os.environ.get('AUTH_TOKENS', os.path.expanduser('~/homebrew/data/GameVault/gog_auth.json'))
 
@@ -38,26 +40,117 @@ class GOG(GamesDb.GamesDb):
         result = self.execute_shell(cmd)
         return json.loads(result)
 
-    def get_list(self, offline=False):
-        # Use lgogdownloader for library listing (like the official extension)
-        games_list = self.execute_shell_json(
-            f"{self.lgogdl_cmd} --list=j --info-threads=40")
-        id_list = []
-        game_dict = {}
-        for game in games_list:
-            # lgogdownloader format: product_id and gamename
-            game_id = str(game.get('product_id', game.get('id', '')))
-            id_list.append(game_id)
-            game_dict[game_id] = game.get('gamename', '')
+    def _get_auth_token(self):
+        """Read access_token from gog_auth.json, refreshing if expired."""
+        if not os.path.exists(self.auth_tokens):
+            raise CmdException("GOG auth tokens not found. Please log in first.")
 
-        left_overs = self.insert_data(id_list)
+        with open(self.auth_tokens, 'r') as f:
+            auth_data = json.load(f)
+
+        # gogdl format: {client_id: {access_token, refresh_token, loginTime, expires_in, ...}}
+        token_info = None
+        for key, val in auth_data.items():
+            if isinstance(val, dict) and val.get('access_token'):
+                token_info = val
+                break
+
+        if not token_info:
+            raise CmdException("No valid tokens in auth file. Please log in again.")
+
+        # Check expiry
+        login_time = token_info.get('loginTime', 0)
+        expires_in = token_info.get('expires_in', 0)
+        if login_time and expires_in and (time.time() > login_time + expires_in):
+            print("GOG token expired, refreshing...", file=sys.stderr)
+            self._refresh_token()
+            # Re-read after refresh
+            with open(self.auth_tokens, 'r') as f:
+                auth_data = json.load(f)
+            for key, val in auth_data.items():
+                if isinstance(val, dict) and val.get('access_token'):
+                    token_info = val
+                    break
+
+        return token_info['access_token']
+
+    def _refresh_token(self):
+        """Refresh GOG auth tokens using the refresh_token."""
+        with open(self.auth_tokens, 'r') as f:
+            auth_data = json.load(f)
+
+        token_info = None
+        client_key = None
+        for key, val in auth_data.items():
+            if isinstance(val, dict) and val.get('refresh_token'):
+                token_info = val
+                client_key = key
+                break
+
+        if not token_info:
+            raise CmdException("No refresh token found. Please log in again.")
+
+        from urllib.parse import urlencode
+        refresh_url = 'https://auth.gog.com/token?' + urlencode({
+            'client_id': self.GOG_CLIENT_ID,
+            'client_secret': self.GOG_CLIENT_SECRET,
+            'grant_type': 'refresh_token',
+            'refresh_token': token_info['refresh_token'],
+        })
+
+        req = urllib.request.Request(refresh_url)
+        resp = urllib.request.urlopen(req, timeout=30)
+        new_tokens = json.loads(resp.read())
+
+        token_info['access_token'] = new_tokens['access_token']
+        token_info['expires_in'] = new_tokens['expires_in']
+        token_info['refresh_token'] = new_tokens['refresh_token']
+        token_info['token_type'] = new_tokens['token_type']
+        token_info['scope'] = new_tokens.get('scope', '')
+        token_info['session_id'] = new_tokens.get('session_id', '')
+        token_info['user_id'] = new_tokens.get('user_id', token_info.get('user_id', ''))
+        token_info['loginTime'] = int(time.time())
+
+        auth_data[client_key] = token_info
+        with open(self.auth_tokens, 'w') as f:
+            json.dump(auth_data, f, indent=2)
+
+        print("GOG tokens refreshed.", file=sys.stderr)
+
+    def get_list(self, offline=False):
+        # Use GOG API to get owned game IDs
+        access_token = self._get_auth_token()
+        req = urllib.request.Request(
+            'https://embed.gog.com/user/data/games',
+            headers={'Authorization': f'Bearer {access_token}'}
+        )
+        resp = urllib.request.urlopen(req, timeout=30)
+        data = json.loads(resp.read())
+        owned_ids = [str(gid) for gid in data.get('owned', [])]
+
+        left_overs = self.insert_data(owned_ids)
         print(f"left_overs: {left_overs}", file=sys.stderr)
+
+        # Fetch titles for new games from the public GOG API, skip DLC
         for game_id in left_overs:
-            gamename = game_dict.get(game_id, '')
+            gamename = ''
+            try:
+                prod_req = urllib.request.Request(
+                    f'https://api.gog.com/products/{game_id}',
+                    headers={'User-Agent': 'Mozilla/5.0'}
+                )
+                prod_resp = urllib.request.urlopen(prod_req, timeout=10)
+                prod_data = json.loads(prod_resp.read())
+                if prod_data.get('game_type') == 'dlc':
+                    print(f"Skipping DLC: {prod_data.get('title', game_id)}", file=sys.stderr)
+                    continue
+                gamename = prod_data.get('title', '')
+            except Exception as e:
+                print(f"Could not fetch title for {game_id}: {e}", file=sys.stderr)
             self.proccess_leftovers_simple(game_id, gamename)
 
     def proccess_leftovers_simple(self, game_id, gamename):
-        """Process games from lgogdownloader --list=j format (product_id + gamename)."""
+        """Insert a new GOG game into the DB with minimal info (ID + title)."""
         print(f"Processing leftover GOG game: {gamename} ({game_id})", file=sys.stderr)
         conn = self.get_connection()
         c = conn.cursor()
@@ -184,26 +277,6 @@ class GOG(GamesDb.GamesDb):
             print(f"Error adding cache: {e}", file=sys.stderr)
         return value
 
-    def get_galaxy_tokens(self, path):
-        """Convert lgogdownloader galaxy tokens to gogdl auth format."""
-        with open(path, 'r') as f:
-            data = json.load(f)
-            tokens = {}
-
-            tokens["access_token"] = data['access_token']
-            tokens["expires_in"] = data['expires_in']
-            tokens["token_type"] = data['token_type']
-            tokens["scope"] = data['scope']
-            tokens["session_id"] = data['session_id']
-            tokens["refresh_token"] = data['refresh_token']
-            tokens["user_id"] = data['user_id']
-            tokens["loginTime"] = data['expires_at'] - data['expires_in']
-            client_id = 46899977096215655
-            if 'client_id' in data:
-                client_id = data['client_id']
-
-            return json.dumps({client_id: tokens})
-
     def has_updates(self, game_id):
         try:
             # Get remote build info
@@ -252,15 +325,33 @@ class GOG(GamesDb.GamesDb):
             try:
                 result = self.execute_shell_json(
                     f"{self.gogdl_cmd} --auth-config-path {self.auth_tokens} info {game_id} --os windows")
-                disk_size = result.get('disk_size', result.get('size', 0))
-                download_size = result.get('download_size', 0)
+                # gogdl info returns size as nested dict: {"size": {"*": {"disk_size": N, "download_size": N}, "en-US": {...}}}
+                # Sum the "*" (language-independent) entry + selected language entry
+                size_data = result.get('size', {})
+                lang = os.environ.get('GOG_LANGUAGE', 'en-US')
+                disk_size = 0
+                download_size = 0
+                if isinstance(size_data, dict):
+                    for key in ('*', lang):
+                        entry = size_data.get(key, {})
+                        if isinstance(entry, dict):
+                            disk_size += entry.get('disk_size', 0)
+                            download_size += entry.get('download_size', 0)
+                    # Fallback: if selected language not found, use first non-* entry
+                    if disk_size == size_data.get('*', {}).get('disk_size', 0) and len(size_data) > 1:
+                        for key, entry in size_data.items():
+                            if key != '*' and isinstance(entry, dict):
+                                disk_size += entry.get('disk_size', 0)
+                                download_size += entry.get('download_size', 0)
+                                break
                 if disk_size:
                     disk_size_str = f"Install Size: {self.convert_bytes(int(disk_size))}"
                     download_size_str = f"Download Size: {self.convert_bytes(int(download_size))}" if download_size else ""
                     size = disk_size_str + (f" ({download_size_str})" if download_size_str else "")
                 else:
                     size = ""
-            except Exception:
+            except Exception as e:
+                print(f"GOG get_game_size error for {game_id}: {e}", file=sys.stderr)
                 size = ""
         return json.dumps({'Type': 'GameSize', 'Content': {'Size': size}})
 

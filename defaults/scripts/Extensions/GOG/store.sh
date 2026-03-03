@@ -182,9 +182,8 @@ function GOG_login-launch-options(){
 
 
 function GOG_logout(){
-    rm -f "${HOME}/.var/app/com.github.sude_.lgogdownloader/config/lgogdownloader/cookies.txt" 2>/dev/null
-    rm -f "${GALAXY_TOKENS}" 2>/dev/null
     rm -f "${AUTH_TOKENS}" 2>/dev/null
+    rm -f "${DBFILE}" 2>/dev/null
     GOG_loginstatus --flush-cache
 }
 

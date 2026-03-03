@@ -41,8 +41,6 @@ class GOGArgs(GameSet.GenericArgs):
         self.parser.add_argument(
             '--has-updates', help='Check if game has updates available')
         self.parser.add_argument(
-            '--get-galaxy-tokens', help='Convert galaxy tokens to gogdl auth format')
-        self.parser.add_argument(
             '--process-info-file', help='Process goggame info file to extract exe path')
         self.parser.add_argument(
             '--sync-saves', help='Sync cloud saves for game')
@@ -96,9 +94,6 @@ class GOGArgs(GameSet.GenericArgs):
             if self.args.update_game_details:
                 self.gameSet.update_game_details(
                     self.args.update_game_details)
-            if self.args.get_galaxy_tokens:
-                print(self.gameSet.get_galaxy_tokens(
-                    self.args.get_galaxy_tokens))
             if self.args.process_info_file:
                 self.gameSet.process_info_file(self.args.process_info_file)
             if self.args.get_game_size:

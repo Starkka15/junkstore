@@ -170,6 +170,7 @@ function Amazon_login-launch-options(){
 function Amazon_logout(){
     $NILE auth --logout &>> "${DECKY_PLUGIN_LOG_DIR}/amazonlogout.log" || true
     rm -f "${HOME}/.config/nile/user.json" 2>/dev/null
+    rm -f "${DBFILE}" 2>/dev/null
     Amazon_loginstatus --flush-cache
 }
 

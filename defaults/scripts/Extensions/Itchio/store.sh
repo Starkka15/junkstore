@@ -145,6 +145,7 @@ function Itchio_login-launch-options(){
 
 function Itchio_logout(){
     rm -f "${DECKY_PLUGIN_RUNTIME_DIR}/itchio_api_key" 2>/dev/null
+    rm -f "${DBFILE}" 2>/dev/null
     Itchio_loginstatus --flush-cache
 }
 

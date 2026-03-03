@@ -367,6 +367,7 @@ function Epic_login-launch-options(){
 
 function Epic_logout(){
     TEMP=$($LEGENDARY auth --delete)
+    rm -f "${DBFILE}" 2>/dev/null
     Epic_loginstatus --flush-cache
 }
 

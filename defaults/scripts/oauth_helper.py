@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
-"""OAuth helper for Amazon login flow.
+"""OAuth helper for store login flows (GOG, Amazon).
 
-Uses nile's --non-interactive mode to get the login URL,
-opens a real browser (not Steam overlay) for login,
+Opens a real browser (not Steam overlay) for login,
 then uses kdialog/zenity to capture the redirect URL.
 """
 import json
@@ -90,6 +89,90 @@ def extract_code_from_url(url, param_name):
         return None
 
 
+def gog_login(auth_tokens_path):
+    """Handle GOG OAuth login flow — replaces lgogdownloader --gui-login."""
+    from urllib.parse import urlparse, parse_qs, urlencode
+    import urllib.request
+    import urllib.error
+
+    GOG_CLIENT_ID = '46899977096215655'
+    GOG_CLIENT_SECRET = '9d85c43b1482497dbbce61f6e4aa173a433796eeae2ca8c5f6129f2dc4de46d9'
+    REDIRECT_URI = 'https://embed.gog.com/on_login_success?origin=client'
+
+    auth_url = (
+        f'https://auth.gog.com/auth?client_id={GOG_CLIENT_ID}'
+        '&redirect_uri=https%3A%2F%2Fembed.gog.com%2Fon_login_success%3Forigin%3Dclient'
+        '&response_type=code&layout=galaxy'
+    )
+
+    open_url(auth_url)
+
+    user_input = show_dialog(
+        "GOG Login",
+        "1. Log in to GOG in the browser window\n"
+        "2. After login, you'll be redirected to a page\n"
+        "3. Copy the ENTIRE URL from the address bar\n"
+        "   (it will contain 'code=' in it)\n"
+        "4. Paste it here and click OK"
+    )
+
+    if not user_input:
+        print("No input received", file=sys.stderr)
+        return False
+
+    code = extract_code_from_url(user_input, 'code')
+    if not code:
+        code = user_input.strip()
+
+    if not code:
+        print("Could not extract authorization code", file=sys.stderr)
+        return False
+
+    print(f"Got authorization code ({len(code)} chars), exchanging for tokens...", file=sys.stderr)
+
+    # GOG's token endpoint expects query parameters, not POST body
+    token_url = 'https://auth.gog.com/token?' + urlencode({
+        'client_id': GOG_CLIENT_ID,
+        'client_secret': GOG_CLIENT_SECRET,
+        'grant_type': 'authorization_code',
+        'code': code,
+        'redirect_uri': REDIRECT_URI,
+    })
+
+    req = urllib.request.Request(token_url)
+    try:
+        resp = urllib.request.urlopen(req, timeout=30)
+        tokens = json.loads(resp.read())
+    except urllib.error.HTTPError as e:
+        body = e.read().decode('utf-8', errors='replace')
+        print(f"Token exchange failed: {e} — Response: {body}", file=sys.stderr)
+        return False
+    except Exception as e:
+        print(f"Token exchange failed: {e}", file=sys.stderr)
+        return False
+
+    import time
+    gogdl_tokens = {
+        'access_token': tokens['access_token'],
+        'expires_in': tokens['expires_in'],
+        'token_type': tokens['token_type'],
+        'scope': tokens.get('scope', ''),
+        'session_id': tokens.get('session_id', ''),
+        'refresh_token': tokens['refresh_token'],
+        'user_id': tokens.get('user_id', ''),
+        'loginTime': int(time.time()),
+    }
+
+    auth_data = {GOG_CLIENT_ID: gogdl_tokens}
+
+    os.makedirs(os.path.dirname(auth_tokens_path), exist_ok=True)
+    with open(auth_tokens_path, 'w') as f:
+        json.dump(auth_data, f, indent=2)
+
+    print("GOG login successful, tokens saved.", file=sys.stderr)
+    return True
+
+
 def amazon_login(nile_bin):
     """Handle Amazon two-step device registration login flow."""
     # Step 1: Get login data from nile
@@ -162,14 +245,18 @@ def amazon_login(nile_bin):
 
 if __name__ == '__main__':
     if len(sys.argv) < 3:
-        print(f"Usage: {sys.argv[0]} amazon <nile_binary_path>")
+        print(f"Usage: {sys.argv[0]} <store> <arg>")
+        print(f"  {sys.argv[0]} amazon <nile_binary_path>")
+        print(f"  {sys.argv[0]} gog <auth_tokens_path>")
         sys.exit(1)
 
     store = sys.argv[1]
-    binary = sys.argv[2]
+    arg = sys.argv[2]
 
     if store == 'amazon':
-        success = amazon_login(binary)
+        success = amazon_login(arg)
+    elif store == 'gog':
+        success = gog_login(arg)
     else:
         print(f"Unknown store: {store}", file=sys.stderr)
         sys.exit(1)

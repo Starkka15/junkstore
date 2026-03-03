@@ -1,14 +1,11 @@
 #!/usr/bin/env bash
 GOGCONF="${DECKY_PLUGIN_DIR}/scripts/gog-config.py"
-# lgogdownloader (flatpak)
-export LGOGDL="/bin/flatpak run com.github.sude_.lgogdownloader"
 # gogdl (flatpak)
 export GOGDL="/bin/flatpak run com.github.heroic_games_launcher.heroic-gogdl"
 export PYTHONPATH="${DECKY_PLUGIN_DIR}/scripts/":"${DECKY_PLUGIN_DIR}/scripts/shared/":$PYTHONPATH
 
 export LAUNCHER="${DECKY_PLUGIN_DIR}/scripts/${Extensions}/GOG/gog-launcher.sh"
 export ARGS_SCRIPT="${DECKY_PLUGIN_DIR}/scripts/${Extensions}/GOG/get-gog-args.sh"
-export GALAXY_TOKENS="${HOME}/.var/app/com.github.sude_.lgogdownloader/config/lgogdownloader/galaxy_tokens.json"
 export AUTH_TOKENS="${DECKY_PLUGIN_RUNTIME_DIR}/gog_auth.json"
 
 DBNAME="gog.db"
