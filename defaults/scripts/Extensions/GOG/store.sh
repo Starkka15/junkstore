@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Register actions with the gamevault.sh script
-ACTIONS+=("update-umu-id" "download-saves" "upload-saves" "toggle-autosync" "lookup-protonfixes" "apply-protonfixes")
+ACTIONS+=("update-umu-id" "download-saves" "upload-saves" "toggle-autosync" "lookup-protonfixes" "apply-protonfixes" "retrodetect-game-types")
 
 # Register GOG as a platform with the gamevault.sh script
 PLATFORMS+=("GOG")
@@ -13,7 +13,14 @@ if [[ "${PLATFORM}" == "GOG" ]]; then
 fi
 
 function GOG_init() {
-    $GOGCONF --list --dbfile $DBFILE &> /dev/null
+    echo "[GOG_init] Starting. Checking .conf files in ${INSTALL_DIR} BEFORE list/retrodetect:" >> "${DECKY_PLUGIN_LOG_DIR}/detection.log" 2>&1
+    find "${INSTALL_DIR}" -maxdepth 2 -name "*.conf" >> "${DECKY_PLUGIN_LOG_DIR}/detection.log" 2>&1 || echo "[GOG_init] No .conf files found" >> "${DECKY_PLUGIN_LOG_DIR}/detection.log" 2>&1
+    $GOGCONF --list --dbfile $DBFILE >> "${DECKY_PLUGIN_LOG_DIR}/detection.log" 2>&1
+    echo "[GOG_init] After --list. Checking .conf files:" >> "${DECKY_PLUGIN_LOG_DIR}/detection.log" 2>&1
+    find "${INSTALL_DIR}" -maxdepth 2 -name "*.conf" >> "${DECKY_PLUGIN_LOG_DIR}/detection.log" 2>&1 || echo "[GOG_init] No .conf files found" >> "${DECKY_PLUGIN_LOG_DIR}/detection.log" 2>&1
+    $GOGCONF --retrodetect --dbfile $DBFILE >> "${DECKY_PLUGIN_LOG_DIR}/detection.log" 2>&1
+    echo "[GOG_init] After --retrodetect. Checking .conf files:" >> "${DECKY_PLUGIN_LOG_DIR}/detection.log" 2>&1
+    find "${INSTALL_DIR}" -maxdepth 2 -name "*.conf" >> "${DECKY_PLUGIN_LOG_DIR}/detection.log" 2>&1 || echo "[GOG_init] No .conf files found" >> "${DECKY_PLUGIN_LOG_DIR}/detection.log" 2>&1
 }
 
 function GOG_refresh() {
@@ -97,23 +104,69 @@ function GOG_repair(){
 
 function GOG_install(){
     PROGRESS_LOG="${DECKY_PLUGIN_LOG_DIR}/${1}.progress"
-    rm $PROGRESS_LOG &>> ${DECKY_PLUGIN_LOG_DIR}/${1}.log
+    INSTALL_LOG="${DECKY_PLUGIN_LOG_DIR}/${1}.log"
+    rm $PROGRESS_LOG &>> ${INSTALL_LOG}
+
+    echo "[GOG_install] Starting install for game_id=${1} steam_shortcut_id=${2}" >> ${INSTALL_LOG} 2>&1
 
     # Find and process goggame-{id}.info to extract exe path
     INFO_FILENAME="goggame-${1}.info"
-    pushd "${INSTALL_DIR}" &>> ${DECKY_PLUGIN_LOG_DIR}/${1}.log
+    pushd "${INSTALL_DIR}" &>> ${INSTALL_LOG}
     GAME_INFO=$(find . -type f -name $INFO_FILENAME)
+    echo "[GOG_install] INSTALL_DIR=${INSTALL_DIR}" >> ${INSTALL_LOG} 2>&1
+    echo "[GOG_install] Looking for ${INFO_FILENAME}, found: '${GAME_INFO}'" >> ${INSTALL_LOG} 2>&1
     echo "Game info: ${GAME_INFO}" >> /dev/stderr
-    popd &>> ${DECKY_PLUGIN_LOG_DIR}/${1}.log
+
+    # Determine game dir from info file path and snapshot .conf files
+    if [[ -n "${GAME_INFO}" ]]; then
+        GAME_SUBDIR=$(dirname "${GAME_INFO}")
+        echo "[GOG_install] CHECKPOINT A (after download, before process-info): .conf files in ${INSTALL_DIR}/${GAME_SUBDIR}/" >> ${INSTALL_LOG} 2>&1
+        ls -la "${INSTALL_DIR}/${GAME_SUBDIR}/"*.conf >> ${INSTALL_LOG} 2>&1 || echo "[GOG_install] CHECKPOINT A: NO .conf files found" >> ${INSTALL_LOG} 2>&1
+        echo "[GOG_install] CHECKPOINT A: full ls of ${INSTALL_DIR}/${GAME_SUBDIR}/" >> ${INSTALL_LOG} 2>&1
+        ls "${INSTALL_DIR}/${GAME_SUBDIR}/" >> ${INSTALL_LOG} 2>&1
+    fi
+    popd &>> ${INSTALL_LOG}
 
     if [[ -n "${GAME_INFO}" ]]; then
-        $GOGCONF --process-info-file "${GAME_INFO}" --dbfile $DBFILE
+        echo "[GOG_install] Processing info file: ${GAME_INFO}" >> ${INSTALL_LOG} 2>&1
+        $GOGCONF --process-info-file "${GAME_INFO}" --dbfile $DBFILE 2>> ${INSTALL_LOG}
+
+        pushd "${INSTALL_DIR}" &>> ${INSTALL_LOG}
+        echo "[GOG_install] CHECKPOINT B (after process-info): .conf files:" >> ${INSTALL_LOG} 2>&1
+        ls -la "${INSTALL_DIR}/${GAME_SUBDIR}/"*.conf >> ${INSTALL_LOG} 2>&1 || echo "[GOG_install] CHECKPOINT B: NO .conf files found" >> ${INSTALL_LOG} 2>&1
+        popd &>> ${INSTALL_LOG}
+    else
+        echo "[GOG_install] WARNING: No goggame info file found for ${1}" >> ${INSTALL_LOG} 2>&1
     fi
 
+    echo "[GOG_install] Adding steam client ID: game=${1} shortcut=${2}" >> ${INSTALL_LOG} 2>&1
     RESULT=$($GOGCONF --addsteamclientid "${1}" "${2}" --dbfile $DBFILE)
+    echo "[GOG_install] addsteamclientid result: ${RESULT}" >> ${INSTALL_LOG} 2>&1
+
+    if [[ -n "${GAME_SUBDIR}" ]]; then
+        pushd "${INSTALL_DIR}" &>> ${INSTALL_LOG}
+        echo "[GOG_install] CHECKPOINT C (after addsteamclientid): .conf files:" >> ${INSTALL_LOG} 2>&1
+        ls -la "${INSTALL_DIR}/${GAME_SUBDIR}/"*.conf >> ${INSTALL_LOG} 2>&1 || echo "[GOG_install] CHECKPOINT C: NO .conf files found" >> ${INSTALL_LOG} 2>&1
+        popd &>> ${INSTALL_LOG}
+    fi
+
     TEMP=$($GOGCONF --update-umu-id "${1}" gog --dbfile $DBFILE)
+    echo "[GOG_install] update-umu-id result: ${TEMP}" >> ${INSTALL_LOG} 2>&1
+
     ARGS=$($ARGS_SCRIPT "${1}")
-    TEMP=$($GOGCONF --launchoptions "${1}" "${ARGS}" "" --dbfile $DBFILE)
+    echo "[GOG_install] ARGS_SCRIPT returned: ${ARGS}" >> ${INSTALL_LOG} 2>&1
+
+    echo "[GOG_install] Requesting launch options for game=${1}" >> ${INSTALL_LOG} 2>&1
+    TEMP=$($GOGCONF --launchoptions "${1}" "${ARGS}" "" --dbfile $DBFILE 2>> ${INSTALL_LOG})
+    echo "[GOG_install] Launch options result: ${TEMP}" >> ${INSTALL_LOG} 2>&1
+
+    if [[ -n "${GAME_SUBDIR}" ]]; then
+        pushd "${INSTALL_DIR}" &>> ${INSTALL_LOG}
+        echo "[GOG_install] CHECKPOINT D (after launchoptions): .conf files:" >> ${INSTALL_LOG} 2>&1
+        ls -la "${INSTALL_DIR}/${GAME_SUBDIR}/"*.conf >> ${INSTALL_LOG} 2>&1 || echo "[GOG_install] CHECKPOINT D: NO .conf files found" >> ${INSTALL_LOG} 2>&1
+        popd &>> ${INSTALL_LOG}
+    fi
+
     echo $TEMP
     exit 0
 }
@@ -312,9 +365,38 @@ function GOG_apply-protonfixes(){
     echo "$TEMP"
 }
 
+function GOG_retrodetect-game-types(){
+    $GOGCONF --retrodetect --dbfile $DBFILE >> "${DECKY_PLUGIN_LOG_DIR}/detection.log" 2>&1
+    echo "{\"Type\": \"Success\", \"Content\": {\"Message\": \"Game types retrodetected\"}}"
+}
+
 function gogupdategamedetailsaftercmd() {
     game=$1
     shift
     "$@"
-    $GOGCONF --update-game-details $game --dbfile $DBFILE &> /dev/null
+
+    # gogdl puts support files (DOSBox confs, etc.) in gog-support/<id>/app/
+    # instead of the game root. Copy them into the game directory so they're
+    # where the goggame info file expects them.
+    GAME_DIR=$($GOGCONF --get-game-dir "$game" --dbfile $DBFILE 2>/dev/null)
+    if [[ -z "${GAME_DIR}" ]]; then
+        # Fallback: find the game folder via the goggame info file
+        INFO_FILE=$(find "${INSTALL_DIR}" -maxdepth 2 -name "goggame-${game}.info" -print -quit 2>/dev/null)
+        if [[ -n "${INFO_FILE}" ]]; then
+            GAME_DIR=$(dirname "${INFO_FILE}")
+        fi
+    fi
+
+    SUPPORT_DIR="${GAME_DIR}/gog-support/${game}/app"
+    if [[ -d "${SUPPORT_DIR}" ]]; then
+        echo "[post-download] Found gog-support dir: ${SUPPORT_DIR}" >> "${DECKY_PLUGIN_LOG_DIR}/${game}.log" 2>&1
+        echo "[post-download] Contents:" >> "${DECKY_PLUGIN_LOG_DIR}/${game}.log" 2>&1
+        ls -la "${SUPPORT_DIR}/" >> "${DECKY_PLUGIN_LOG_DIR}/${game}.log" 2>&1
+        cp -n "${SUPPORT_DIR}/"* "${GAME_DIR}/" >> "${DECKY_PLUGIN_LOG_DIR}/${game}.log" 2>&1
+        echo "[post-download] Copied support files to ${GAME_DIR}/" >> "${DECKY_PLUGIN_LOG_DIR}/${game}.log" 2>&1
+    else
+        echo "[post-download] No gog-support dir at ${SUPPORT_DIR}" >> "${DECKY_PLUGIN_LOG_DIR}/${game}.log" 2>&1
+    fi
+
+    $GOGCONF --update-game-details $game --dbfile $DBFILE >> "${DECKY_PLUGIN_LOG_DIR}/${game}.log" 2>&1
 }

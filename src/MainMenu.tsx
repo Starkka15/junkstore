@@ -2,6 +2,7 @@ import { ButtonItem, ModalRoot, Navigation, PanelSection, PanelSectionRow, Serve
 import { VFC, useEffect } from "react";
 import { StoreContent } from "./Types/Types";
 import QRCode from "react-qr-code";
+import { DownloadBadge } from "./Components/DownloadBadge";
 
 export const showQrModal = (url: string) => {
     showModal(
@@ -63,7 +64,22 @@ closeModal}) => {
             ))}
             <PanelSection title="">
                 <PanelSectionRow>
-
+                    <ButtonItem
+                        layout="below"
+                        onClick={() => {
+                            Navigation.CloseSideMenus();
+                            if (closeModal)
+                                closeModal();
+                            Navigation.Navigate("/gamevault-downloads");
+                        }}
+                    >
+                        Downloads
+                    </ButtonItem>
+                </PanelSectionRow>
+                <PanelSectionRow>
+                    <DownloadBadge />
+                </PanelSectionRow>
+                <PanelSectionRow>
                     <ButtonItem
                         layout="below"
                         onClick={() => {

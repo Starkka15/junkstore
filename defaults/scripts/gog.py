@@ -7,6 +7,7 @@ import sys
 import subprocess
 import time
 import urllib.request
+import urllib.error
 
 import GamesDb
 from datetime import datetime, timedelta
@@ -131,7 +132,8 @@ class GOG(GamesDb.GamesDb):
         left_overs = self.insert_data(owned_ids)
         print(f"left_overs: {left_overs}", file=sys.stderr)
 
-        # Fetch titles for new games from the public GOG API, skip DLC
+        # Fetch titles for new games from the public GOG API
+        # Only add actual games — skip DLC, packs/bundles, and delisted products (404)
         for game_id in left_overs:
             gamename = ''
             try:
@@ -141,12 +143,17 @@ class GOG(GamesDb.GamesDb):
                 )
                 prod_resp = urllib.request.urlopen(prod_req, timeout=10)
                 prod_data = json.loads(prod_resp.read())
-                if prod_data.get('game_type') == 'dlc':
-                    print(f"Skipping DLC: {prod_data.get('title', game_id)}", file=sys.stderr)
+                game_type = prod_data.get('game_type', '')
+                if game_type != 'game':
+                    print(f"Skipping {game_type}: {prod_data.get('title', game_id)}", file=sys.stderr)
                     continue
                 gamename = prod_data.get('title', '')
+            except urllib.error.HTTPError as e:
+                print(f"Skipping {game_id}: HTTP {e.code}", file=sys.stderr)
+                continue
             except Exception as e:
-                print(f"Could not fetch title for {game_id}: {e}", file=sys.stderr)
+                print(f"Could not fetch product {game_id}: {e}", file=sys.stderr)
+                continue
             self.proccess_leftovers_simple(game_id, gamename)
 
     def proccess_leftovers_simple(self, game_id, gamename):
@@ -180,6 +187,121 @@ class GOG(GamesDb.GamesDb):
 
         conn.close()
 
+    @staticmethod
+    def detect_game_type(exe_path):
+        """Classify game type based on exe path. Returns 'dosbox', 'scummvm', or 'windows'."""
+        if not exe_path:
+            print(f"[detect_game_type] exe_path is empty/None -> windows", file=sys.stderr)
+            return 'windows'
+        exe_lower = exe_path.lower()
+        if 'dosbox' in exe_lower:
+            print(f"[detect_game_type] Found 'dosbox' in {exe_path!r} -> dosbox", file=sys.stderr)
+            return 'dosbox'
+        if 'scummvm' in exe_lower:
+            print(f"[detect_game_type] Found 'scummvm' in {exe_path!r} -> scummvm", file=sys.stderr)
+            return 'scummvm'
+        print(f"[detect_game_type] No match in {exe_path!r} -> windows", file=sys.stderr)
+        return 'windows'
+
+    @staticmethod
+    def detect_and_add_scummvm_game(game_path):
+        """Detect a ScummVM game, add it to ScummVM's library, return the target ID or None.
+
+        Uses --add to register the game. If already added, falls back to --detect
+        to find the game ID, then looks up the target via --list-targets.
+        """
+        print(f"[ScummVM detect] Starting detection for: {game_path}", file=sys.stderr)
+        print(f"[ScummVM detect] Path exists: {os.path.exists(game_path)}, is dir: {os.path.isdir(game_path)}", file=sys.stderr)
+        try:
+            contents = os.listdir(game_path) if os.path.isdir(game_path) else []
+            print(f"[ScummVM detect] Directory contents ({len(contents)} items): {contents[:30]}", file=sys.stderr)
+        except Exception as e:
+            print(f"[ScummVM detect] Could not list directory: {e}", file=sys.stderr)
+
+        # Check if ScummVM flatpak is installed
+        try:
+            flatpak_check = subprocess.run(
+                ['flatpak', 'list', '--app', '--columns=application'],
+                capture_output=True, text=True, timeout=10)
+            scummvm_installed = 'org.scummvm.ScummVM' in flatpak_check.stdout
+            print(f"[ScummVM detect] ScummVM flatpak installed: {scummvm_installed}", file=sys.stderr)
+            if not scummvm_installed:
+                print(f"[ScummVM detect] ABORT: ScummVM flatpak not installed", file=sys.stderr)
+                return None
+        except Exception as e:
+            print(f"[ScummVM detect] Could not check flatpak list: {e}", file=sys.stderr)
+
+        # ScummVM CLI commands need a dummy video driver — there's no display
+        # when running as a Decky backend service
+        cli_env = dict(os.environ, SDL_VIDEODRIVER='dummy')
+
+        try:
+            # Try --add first
+            add_cmd = ['flatpak', 'run', f'--filesystem={game_path}',
+                       'org.scummvm.ScummVM', '--add', f'--path={game_path}']
+            print(f"[ScummVM detect] Running --add cmd: {' '.join(add_cmd)}", file=sys.stderr)
+            result = subprocess.run(add_cmd, capture_output=True, text=True, timeout=15, env=cli_env)
+            print(f"[ScummVM detect] --add returncode: {result.returncode}", file=sys.stderr)
+            print(f"[ScummVM detect] --add stdout: {result.stdout.strip()!r}", file=sys.stderr)
+            print(f"[ScummVM detect] --add stderr: {result.stderr.strip()!r}", file=sys.stderr)
+            output = result.stdout + result.stderr
+
+            # Check for Target: line (new addition)
+            for line in result.stdout.splitlines():
+                if line.strip().startswith('Target:'):
+                    target_id = line.split(':', 1)[1].strip()
+                    print(f"[ScummVM detect] SUCCESS: added game, target={target_id}", file=sys.stderr)
+                    return target_id
+
+            # If "already been added" — detect the game ID, then find its target
+            if 'already been added' in output:
+                print(f"[ScummVM detect] Game already added, trying --detect", file=sys.stderr)
+                detect_cmd = ['flatpak', 'run', f'--filesystem={game_path}',
+                              'org.scummvm.ScummVM', '--detect', f'--path={game_path}']
+                print(f"[ScummVM detect] Running --detect cmd: {' '.join(detect_cmd)}", file=sys.stderr)
+                detect_result = subprocess.run(detect_cmd, capture_output=True, text=True, timeout=15, env=cli_env)
+                print(f"[ScummVM detect] --detect returncode: {detect_result.returncode}", file=sys.stderr)
+                print(f"[ScummVM detect] --detect stdout: {detect_result.stdout.strip()!r}", file=sys.stderr)
+                print(f"[ScummVM detect] --detect stderr: {detect_result.stderr.strip()!r}", file=sys.stderr)
+
+                # Parse detect output: "stark:tlj  The Longest Journey...  /path"
+                game_id = None
+                for line in detect_result.stdout.splitlines():
+                    line = line.strip()
+                    print(f"[ScummVM detect] --detect line: {line!r}", file=sys.stderr)
+                    if line and not line.startswith('GameID') and not line.startswith('---'):
+                        game_id = line.split()[0]  # e.g. "stark:tlj"
+                        print(f"[ScummVM detect] Parsed game_id: {game_id}", file=sys.stderr)
+                        break
+
+                if game_id:
+                    # Find the target that matches this game ID via --list-targets
+                    print(f"[ScummVM detect] Looking up target for game_id={game_id}", file=sys.stderr)
+                    targets_cmd = ['flatpak', 'run', 'org.scummvm.ScummVM', '--list-targets']
+                    print(f"[ScummVM detect] Running --list-targets cmd: {' '.join(targets_cmd)}", file=sys.stderr)
+                    targets_result = subprocess.run(targets_cmd, capture_output=True, text=True, timeout=15, env=cli_env)
+                    print(f"[ScummVM detect] --list-targets returncode: {targets_result.returncode}", file=sys.stderr)
+                    print(f"[ScummVM detect] --list-targets stdout: {targets_result.stdout.strip()!r}", file=sys.stderr)
+                    for line in targets_result.stdout.splitlines():
+                        line = line.strip()
+                        if line and not line.startswith('Target') and not line.startswith('---'):
+                            target_id = line.split()[0]
+                            print(f"[ScummVM detect] SUCCESS: found existing target={target_id}", file=sys.stderr)
+                            return target_id
+                    print(f"[ScummVM detect] FAIL: no matching target found in --list-targets", file=sys.stderr)
+                else:
+                    print(f"[ScummVM detect] FAIL: --detect returned no game_id", file=sys.stderr)
+            else:
+                print(f"[ScummVM detect] Not a ScummVM game (no 'already been added' and no Target: line)", file=sys.stderr)
+
+        except subprocess.TimeoutExpired as e:
+            print(f"[ScummVM detect] TIMEOUT: {e}", file=sys.stderr)
+        except FileNotFoundError:
+            print(f"[ScummVM detect] FAIL: 'flatpak' command not found in PATH", file=sys.stderr)
+        except Exception as e:
+            print(f"[ScummVM detect] FAIL: {type(e).__name__}: {e}", file=sys.stderr)
+        return None
+
     def process_info_file(self, file_path):
         """Parse goggame-{id}.info to extract exe path, args, working dir and store in DB."""
         print(f"Processing info file: {file_path}", file=sys.stderr)
@@ -192,6 +314,7 @@ class GOG(GamesDb.GamesDb):
             exe_file = ""
             args = ""
             working_dir = ""
+            # First pass: grab the primary/game task
             for task in data['playTasks']:
                 if ('category' in task and task['category'] == 'game') or ('isPrimary' in task and task['isPrimary']):
                     exe_file = task['path']
@@ -200,13 +323,44 @@ class GOG(GamesDb.GamesDb):
                     if task.get('workingDir'):
                         working_dir = task['workingDir']
                     break
-            print(f"Exe file: {exe_file}", file=sys.stderr)
+
+            game_type = self.detect_game_type(exe_file)
+            print(f"[process_info] Primary task exe: {exe_file!r}, detected type: {game_type}", file=sys.stderr)
+
+            # If the primary task isn't DOSBox/ScummVM, scan all tasks —
+            # GOG often sets a Windows wrapper as primary while bundling DOSBox
+            if game_type == 'windows':
+                print(f"[process_info] Primary is windows, scanning {len(data['playTasks'])} playTasks for emulator tasks", file=sys.stderr)
+                for i, task in enumerate(data['playTasks']):
+                    task_path = task.get('path', '')
+                    task_type = self.detect_game_type(task_path)
+                    print(f"[process_info]   playTask[{i}]: path={task_path!r} type={task_type} category={task.get('category', 'none')} isPrimary={task.get('isPrimary', False)}", file=sys.stderr)
+                    if task_type != 'windows':
+                        exe_file = task_path
+                        args = task.get('arguments', '')
+                        working_dir = task.get('workingDir', '')
+                        game_type = task_type
+                        print(f"[process_info] Found {game_type} task in playTask[{i}]: {exe_file}", file=sys.stderr)
+                        break
+
             root_dir = os.path.abspath(os.path.dirname(file_path))
-            print(f"Root dir: {root_dir}", file=sys.stderr)
+
+            # Last resort: if still windows, ask ScummVM if it recognizes the game
+            if game_type == 'windows':
+                print(f"[process_info] Still windows after playTask scan, trying ScummVM detection on: {root_dir}", file=sys.stderr)
+                scummvm_target = self.detect_and_add_scummvm_game(root_dir)
+                if scummvm_target:
+                    game_type = 'scummvm'
+                    args = scummvm_target
+                    print(f"[process_info] ScummVM registered target: {scummvm_target}", file=sys.stderr)
+                else:
+                    print(f"[process_info] ScummVM detection returned None — keeping type=windows", file=sys.stderr)
+
+            print(f"[process_info] Final: exe={exe_file!r} root_dir={root_dir} game_type={game_type} args={args!r} working_dir={working_dir!r}", file=sys.stderr)
             game_id = data['gameId']
 
             print(f"Game id: {game_id}", file=sys.stderr)
-            c.execute("update Game set ApplicationPath = ?, RootFolder = ?, Arguments =?, WorkingDir =? where DatabaseID = ?", (exe_file, root_dir, args, working_dir, game_id))
+            c.execute("update Game set ApplicationPath = ?, RootFolder = ?, Arguments =?, WorkingDir =?, GameType =? where DatabaseID = ?", (exe_file, root_dir, args, working_dir, game_type, game_id))
             conn.commit()
 
         conn.close()
@@ -224,6 +378,78 @@ class GOG(GamesDb.GamesDb):
         else:
             install_dir = os.environ.get('INSTALL_DIR', os.path.expanduser('~/Games/gog/'))
             print(os.path.join(install_dir, game_id))
+
+    def get_game_type(self, game_id):
+        """Get the GameType for a game from the DB."""
+        conn = self.get_connection()
+        c = conn.cursor()
+        c.execute("SELECT GameType FROM Game WHERE ShortName=?", (game_id,))
+        result = c.fetchone()
+        conn.close()
+        return result[0] if result and result[0] else 'windows'
+
+    def retrodetect_game_types(self):
+        """Scan installed games and update GameType based on ApplicationPath and goggame info files."""
+        conn = self.get_connection()
+        c = conn.cursor()
+        c.execute("SELECT ShortName, ApplicationPath, RootFolder, DatabaseID FROM Game WHERE ApplicationPath IS NOT NULL AND ApplicationPath != '' AND (GameType IS NULL OR GameType = 'windows')")
+        rows = c.fetchall()
+        print(f"[retrodetect] Found {len(rows)} games with type=windows or NULL to scan", file=sys.stderr)
+        updated = 0
+        for row in rows:
+            shortname, app_path, root_folder, db_id = row
+            game_type = self.detect_game_type(app_path)
+            print(f"[retrodetect] {shortname} (db_id={db_id}): app_path={app_path!r} -> {game_type}, root_folder={root_folder!r}", file=sys.stderr)
+
+            # If ApplicationPath isn't DOSBox/ScummVM, scan the goggame info file
+            # for non-primary tasks that reference them (e.g. Quake bundles GLQuake as
+            # primary but has DOSBox as a secondary task)
+            if game_type == 'windows' and root_folder:
+                info_file = os.path.join(root_folder, f'goggame-{db_id}.info')
+                print(f"[retrodetect] {shortname}: checking info file: {info_file} (exists={os.path.exists(info_file)})", file=sys.stderr)
+                if os.path.exists(info_file):
+                    try:
+                        with open(info_file, 'r') as f:
+                            data = json.load(f)
+                        tasks = data.get('playTasks', [])
+                        print(f"[retrodetect] {shortname}: info file has {len(tasks)} playTasks", file=sys.stderr)
+                        for i, task in enumerate(tasks):
+                            task_path = task.get('path', '')
+                            task_type = self.detect_game_type(task_path)
+                            print(f"[retrodetect] {shortname}:   playTask[{i}]: path={task_path!r} type={task_type}", file=sys.stderr)
+                            if task_type != 'windows':
+                                game_type = task_type
+                                new_args = task.get('arguments', '')
+                                new_working_dir = task.get('workingDir', '')
+                                c.execute("UPDATE Game SET ApplicationPath=?, Arguments=?, WorkingDir=?, GameType=? WHERE ShortName=?",
+                                          (task_path, new_args, new_working_dir, game_type, shortname))
+                                updated += 1
+                                print(f"[retrodetect] {shortname} -> {game_type} (from info file playTask[{i}])", file=sys.stderr)
+                                break
+                    except Exception as e:
+                        print(f"[retrodetect] {shortname}: error reading {info_file}: {e}", file=sys.stderr)
+
+            # Last resort: ask ScummVM if it recognizes the game
+            if game_type == 'windows' and root_folder and os.path.isdir(root_folder):
+                print(f"[retrodetect] {shortname}: still windows, trying ScummVM detection on {root_folder}", file=sys.stderr)
+                scummvm_target = self.detect_and_add_scummvm_game(root_folder)
+                if scummvm_target:
+                    game_type = 'scummvm'
+                    c.execute("UPDATE Game SET Arguments=?, GameType=? WHERE ShortName=?",
+                              (scummvm_target, game_type, shortname))
+                    updated += 1
+                    print(f"[retrodetect] {shortname} -> scummvm (target={scummvm_target})", file=sys.stderr)
+                else:
+                    print(f"[retrodetect] {shortname}: ScummVM detection returned None", file=sys.stderr)
+
+            if game_type != 'windows':
+                c.execute("UPDATE Game SET GameType=? WHERE ShortName=? AND (GameType IS NULL OR GameType = 'windows')", (game_type, shortname))
+                if c.rowcount > 0:
+                    updated += 1
+                    print(f"[retrodetect] {shortname} -> {game_type}", file=sys.stderr)
+        conn.commit()
+        conn.close()
+        print(f"[retrodetect] Done. Updated {updated} games out of {len(rows)} scanned", file=sys.stderr)
 
     def get_login_status(self, flush_cache=False):
         cache_key = "gog-login"
@@ -355,6 +581,103 @@ class GOG(GamesDb.GamesDb):
                 size = ""
         return json.dumps({'Type': 'GameSize', 'Content': {'Size': size}})
 
+    @staticmethod
+    def _find_case_insensitive(path):
+        """Find a file by path using case-insensitive matching on each component.
+        Returns the actual on-disk path, or the original path if not found."""
+        if os.path.exists(path):
+            return path
+        # Walk from root, matching each path component case-insensitively
+        parts = os.path.normpath(path).split(os.sep)
+        # Start from root or first component
+        if parts[0] == '':
+            current = os.sep
+            parts = parts[1:]
+        else:
+            current = parts[0]
+            parts = parts[1:]
+        for part in parts:
+            candidate = os.path.join(current, part)
+            if os.path.exists(candidate):
+                current = candidate
+                continue
+            # Case-insensitive search in parent directory
+            try:
+                entries = os.listdir(current)
+                matched = False
+                for entry in entries:
+                    if entry.lower() == part.lower():
+                        current = os.path.join(current, entry)
+                        matched = True
+                        break
+                if not matched:
+                    print(f"[dosbox_args] Case-insensitive lookup failed: no match for {part!r} in {current}", file=sys.stderr)
+                    return path  # Give up, return original
+            except Exception as e:
+                print(f"[dosbox_args] Case-insensitive lookup error in {current}: {e}", file=sys.stderr)
+                return path
+        return current
+
+    @staticmethod
+    def _resolve_dosbox_args(raw_args, root_dir, working_dir_rel):
+        """Resolve DOSBox -conf relative paths to absolute.
+
+        Strips Windows-only flags (-noconsole, -c "exit") that break native DOSBox Staging.
+        The GOG autoexec's relative paths (mount c "..", imgmount d "..\\game.cue") work
+        because WorkingDir is set to the DOSBOX subfolder.
+        Uses case-insensitive file lookup since GOG games come from Windows.
+        """
+        print(f"[dosbox_args] Input: raw_args={raw_args!r} root_dir={root_dir!r} working_dir_rel={working_dir_rel!r}", file=sys.stderr)
+        if working_dir_rel:
+            base_dir = os.path.join(root_dir, working_dir_rel).replace("\\", "/")
+        else:
+            base_dir = root_dir
+        print(f"[dosbox_args] base_dir={base_dir}", file=sys.stderr)
+
+        resolved = []
+        remaining = raw_args
+        while True:
+            match = re.search(r'-conf\s+"([^"]+)"', remaining)
+            if not match:
+                break
+            conf_rel = match.group(1).replace("\\", "/")
+            conf_abs = os.path.normpath(os.path.join(base_dir, conf_rel))
+            if not os.path.exists(conf_abs):
+                conf_abs_ci = GOG._find_case_insensitive(conf_abs)
+                print(f"[dosbox_args] Resolved conf: {conf_rel!r} -> {conf_abs} (exists=False), case-insensitive -> {conf_abs_ci} (exists={os.path.exists(conf_abs_ci)})", file=sys.stderr)
+                conf_abs = conf_abs_ci
+            else:
+                print(f"[dosbox_args] Resolved conf: {conf_rel!r} -> {conf_abs} (exists=True)", file=sys.stderr)
+            resolved.append(f'-conf "{conf_abs}"')
+            remaining = remaining[match.end():]
+
+        result = ' '.join(resolved)
+        if not resolved:
+            print(f"[dosbox_args] WARNING: No -conf flags found in raw_args={raw_args!r}", file=sys.stderr)
+        print(f"[dosbox_args] Final resolved args: {result!r}", file=sys.stderr)
+        return result
+
+    @staticmethod
+    def _resolve_scummvm_args(raw_args, root_dir):
+        """Build ScummVM launch args. Handles both GOG-bundled (-c ini) and detected (target ID)."""
+        if '-c ' in raw_args:
+            # GOG-bundled ScummVM: -c scummvm.ini game-id
+            resolved = []
+            ini_match = re.search(r'-c\s+"?([^"\s]+)"?', raw_args)
+            if ini_match:
+                ini_rel = ini_match.group(1).replace("\\", "/")
+                ini_abs = os.path.normpath(os.path.join(root_dir, ini_rel))
+                if os.path.exists(ini_abs):
+                    resolved.append(f'-c "{ini_abs}"')
+            # Game ID is the last non-flag argument
+            game_id_match = re.search(r'(?:^|\s)([a-z][a-z0-9_:-]+)\s*$', raw_args)
+            if game_id_match:
+                resolved.append(game_id_match.group(1))
+            return ' '.join(resolved)
+        else:
+            # ScummVM target ID from --add (e.g. tlj-win) — game is already registered
+            return raw_args.strip()
+
     def get_lauch_options(self, game_id, steam_command, name, offline=False):
         launcher = os.environ['LAUNCHER']
         script_path = os.path.expanduser(launcher)
@@ -362,9 +685,15 @@ class GOG(GamesDb.GamesDb):
         conn = self.get_connection()
         c = conn.cursor()
         c.row_factory = sqlite3.Row
-        c.execute("SELECT ApplicationPath, RootFolder, WorkingDir FROM Game WHERE ShortName=?", (game_id,))
+        c.execute("SELECT ApplicationPath, RootFolder, WorkingDir, GameType, Arguments FROM Game WHERE ShortName=?", (game_id,))
         game = c.fetchone()
         conn.close()
+
+        print(f"[launch] game_id={game_id} name={name!r}", file=sys.stderr)
+        if game:
+            print(f"[launch] DB row: ApplicationPath={game['ApplicationPath']!r} RootFolder={game['RootFolder']!r} WorkingDir={game['WorkingDir']!r} GameType={game['GameType']!r} Arguments={game['Arguments']!r}", file=sys.stderr)
+        else:
+            print(f"[launch] WARNING: No DB row found for game_id={game_id}", file=sys.stderr)
 
         if game and game['RootFolder'] and game['ApplicationPath']:
             root_dir = game['RootFolder']
@@ -374,6 +703,69 @@ class GOG(GamesDb.GamesDb):
             install_dir = os.environ.get('INSTALL_DIR', os.path.expanduser('~/Games/gog/'))
             game_exe = ""
             working_dir = os.path.join(install_dir, game_id) if install_dir else ""
+
+        game_type = game['GameType'] if game and game['GameType'] else 'windows'
+        raw_args = game['Arguments'] if game and game['Arguments'] else ''
+        print(f"[launch] Resolved: game_type={game_type} raw_args={raw_args!r}", file=sys.stderr)
+
+        # DOSBox and ScummVM games launch natively — no Proton needed
+        # Use "flatpak run --filesystem=<path>" so the sandbox can access game files
+        # (SteamOS is immutable, so system-level overrides don't work)
+        if game_type in ('dosbox', 'scummvm'):
+            flatpak_ids = {
+                'dosbox': 'io.github.dosbox-staging',
+                'scummvm': 'org.scummvm.ScummVM',
+            }
+            flatpak_id = flatpak_ids[game_type]
+            print(f"[launch] Native {game_type} launch via flatpak: {flatpak_id}", file=sys.stderr)
+
+            if game_type == 'dosbox':
+                working_dir_rel = game['WorkingDir'] if game and game['WorkingDir'] else ''
+                print(f"[launch][dosbox] working_dir_rel={working_dir_rel!r} root_dir={root_dir!r}", file=sys.stderr)
+                # Case-insensitive working dir lookup (goggame says "DOSBOX" but folder may be "DOSBox")
+                if working_dir_rel:
+                    candidate = os.path.join(root_dir, working_dir_rel)
+                    print(f"[launch][dosbox] Checking working dir candidate: {candidate} (exists={os.path.isdir(candidate)})", file=sys.stderr)
+                    if not os.path.isdir(candidate):
+                        # Try case-insensitive match
+                        try:
+                            entries = os.listdir(root_dir)
+                            print(f"[launch][dosbox] Case-insensitive search in {root_dir}: looking for {working_dir_rel!r} among {entries}", file=sys.stderr)
+                            for entry in entries:
+                                if entry.lower() == working_dir_rel.lower() and os.path.isdir(os.path.join(root_dir, entry)):
+                                    print(f"[launch][dosbox] Case-insensitive match: {working_dir_rel!r} -> {entry!r}", file=sys.stderr)
+                                    working_dir_rel = entry
+                                    break
+                        except Exception as e:
+                            print(f"[launch][dosbox] Case-insensitive search failed: {e}", file=sys.stderr)
+                    native_working_dir = os.path.join(root_dir, working_dir_rel).replace("\\", "/")
+                else:
+                    native_working_dir = root_dir
+                print(f"[launch][dosbox] native_working_dir={native_working_dir}", file=sys.stderr)
+                resolved_args = self._resolve_dosbox_args(raw_args, root_dir, working_dir_rel)
+                print(f"[launch][dosbox] resolved_args={resolved_args!r} (from raw_args={raw_args!r})", file=sys.stderr)
+
+            else:
+                resolved_args = self._resolve_scummvm_args(raw_args, root_dir)
+                native_working_dir = root_dir
+                print(f"[launch][scummvm] resolved_args={resolved_args!r} native_working_dir={native_working_dir}", file=sys.stderr)
+
+            # Exe = flatpak, Options = run --filesystem=<game_dir> <app_id> <game_args>
+            options = f"run --filesystem=\"{root_dir}\" {flatpak_id} {resolved_args}"
+
+            launch_result = {
+                'Type': 'LaunchOptions',
+                'Content': {
+                    'Exe': '"/usr/bin/flatpak"',
+                    'Options': options,
+                    'WorkingDir': f"\"{native_working_dir}\"",
+                    'Compatibility': False,
+                    'Name': name
+                }
+            }
+            print(f"[launch] Returning native launch: {json.dumps(launch_result)}", file=sys.stderr)
+
+            return json.dumps(launch_result)
 
         return json.dumps(
             {

@@ -10,6 +10,7 @@ import { footerClasses } from '../staticClasses';
 import { reaction } from 'mobx';
 import { ErrorDisplay } from "./ErrorDisplay";
 import { ErrorModal } from "../ErrorModal";
+import { installQueue, QueueItem, QueueState } from '../Utils/installQueue';
 
 const gameDetailsRootClass = 'game-details-modal-root';
 
@@ -18,6 +19,7 @@ interface GameDetailsItemProperties {
     shortname: string;
     initActionSet: string;
     closeModal?: any;
+    initAction?: string;
 }
 
 export const GameDetailsItem: VFC<GameDetailsItemProperties> = ({ serverAPI, shortname, initActionSet, closeModal }) => {
@@ -26,24 +28,46 @@ export const GameDetailsItem: VFC<GameDetailsItemProperties> = ({ serverAPI, sho
     const [scriptActions, setScriptActions] = useState<MenuAction[]>([]);
     const [gameData, setGameData] = useState<ContentResult<GameDetails | EmptyContent>>({ Type: "Empty", Content: { Details: {} } });
     const [steamClientID, setSteamClientID] = useState("");
-    const [installing, setInstalling] = useState(false);
-    const [shouldUpdateShortcut, setShouldUpdateShortcut] = useState(false);
 
-    const originRoute = location.pathname.replace('/routes', '');
+    // Queue-based download tracking
+    const [queueItem, setQueueItem] = useState<QueueItem | undefined>(
+        installQueue.getItemStatus(shortname)
+    );
 
-    const [progress, setProgress] = useState<ProgressUpdate>({
+    // Local progress for non-download actions (verify, repair, save sync, etc.)
+    const [localInstalling, setLocalInstalling] = useState(false);
+    const [localProgress, setLocalProgress] = useState<ProgressUpdate>({
         Percentage: 0,
         Description: ""
     });
-
-    const installingRef = useRef(installing);
+    const localInstallingRef = useRef(localInstalling);
     useEffect(() => {
-        installingRef.current = installing;
-    }, [installing]);
+        localInstallingRef.current = localInstalling;
+    }, [localInstalling]);
 
+    // Derived state: is this game downloading/installing via queue?
+    const isQueueActive = queueItem && (queueItem.status === "downloading" || queueItem.status === "installing" || queueItem.status === "queued");
+    const installing = localInstalling || !!isQueueActive;
+    const progress: ProgressUpdate = isQueueActive
+        ? { Percentage: queueItem!.progress, Description: queueItem!.description }
+        : localProgress;
 
+    const originRoute = location.pathname.replace('/routes', '');
 
-    //const [] = useState("Play Game");
+    // Subscribe to installQueue for this game's status
+    useEffect(() => {
+        installQueue.setServerAPI(serverAPI);
+        const unsubscribe = installQueue.subscribe((state: QueueState) => {
+            const item = state.items.find(i => i.shortname === shortname);
+            setQueueItem(item);
+            // If queue just completed install for this game, refresh data
+            if (item?.status === "done") {
+                reloadData();
+            }
+        });
+        return unsubscribe;
+    }, [shortname]);
+
     useEffect(() => {
         reaction(() => SteamUIStore.WindowStore.GamepadUIMainWindowInstance?.LocationPathName, closeModal)
         onInit();
@@ -91,8 +115,9 @@ export const GameDetailsItem: VFC<GameDetailsItemProperties> = ({ serverAPI, sho
         }
     };
 
-    const updateProgress = async () => {
-        while (installingRef.current) {
+    // Local progress polling for non-download actions (verify, repair, etc.)
+    const updateLocalProgress = async () => {
+        while (localInstallingRef.current) {
             try {
                 const progressUpdateResponse = await executeAction<ExecuteGetGameDetailsArgs, ProgressUpdate>(
                     serverAPI,
@@ -107,41 +132,30 @@ export const GameDetailsItem: VFC<GameDetailsItemProperties> = ({ serverAPI, sho
                 }
                 const progressUpdate = progressUpdateResponse.Content;
                 if (progressUpdate != null) {
-                    setProgress(progressUpdate);
+                    setLocalProgress(progressUpdate);
                     if (progressUpdate.Error != null) {
                         showModal(<ErrorModal Error={{ ActionName: "GetProgress", ActionSet: initActionSet, Message: "Installation failed", Data: progressUpdate.Error ?? "" } as ContentError} />);
-                        cancelInstall();
+                        setLocalInstalling(false);
                         break;
-
                     }
                     if (progressUpdate.Percentage >= 100) {
-
-                        if (shouldUpdateShortcut) {
-                            await install();
-                        }
-                        else {
-                            setInstalling(false);
-                        }
-
+                        setLocalInstalling(false);
                         break;
                     }
                 }
-
             } catch (e) {
                 logger.error('Error in progress updater', e);
             }
-
             await sleep(1000);
         }
     };
 
-
-
     useEffect(() => {
-        if (installing) {
-            updateProgress();
+        if (localInstalling) {
+            updateLocalProgress();
         }
-    }, [installing]);
+    }, [localInstalling]);
+
     const uninstall = async () => {
         try {
             await executeAction<ExecuteGetGameDetailsArgs, ContentType>(
@@ -158,23 +172,30 @@ export const GameDetailsItem: VFC<GameDetailsItemProperties> = ({ serverAPI, sho
             logger.error(error);
         }
     };
-    const download = async (update: boolean) => {
-        try {
 
-            const result = await executeAction<ExecuteGetGameDetailsArgs, ContentType>(
-                serverAPI,
-                initActionSet,
-                update ? "Update" : "Download",
-                {
-                    shortname: shortname
+    // Downloads go through the queue
+    const download = async (update: boolean) => {
+        if (update) {
+            // Updates use local state since they're for already-installed games
+            try {
+                const result = await executeAction<ExecuteGetGameDetailsArgs, ContentType>(
+                    serverAPI,
+                    initActionSet,
+                    "Update",
+                    { shortname: shortname }
+                );
+                if (result?.Type == "Progress") {
+                    setLocalInstalling(true);
                 }
-            );
-            if (result?.Type == "Progress") {
-                setShouldUpdateShortcut(true);
-                setInstalling(true);
+            } catch (error) {
+                logger.error(error);
             }
-        } catch (error) {
-            logger.error(error);
+        } else {
+            // Fresh installs go through the queue
+            const gameName = gameData.Type === "GameDetails"
+                ? (gameData.Content as GameDetails).Name
+                : shortname;
+            installQueue.add(shortname, gameName, initActionSet);
         }
     };
 
@@ -186,27 +207,27 @@ export const GameDetailsItem: VFC<GameDetailsItemProperties> = ({ serverAPI, sho
 
     const runScript = async (actionSet: string, actionId: string, args: any) => {
         const result = await executeAction<ExecuteGetGameDetailsArgs, ContentType>(serverAPI, actionSet, actionId, args, onExeExit);
-
         if (result?.Type == "Progress") {
-            setInstalling(true);
+            setLocalInstalling(true);
         }
-
     };
-    const cancelInstall = async () => {
-        try {
-            installingRef.current = false;
-            setInstalling(false);
-            await executeAction(
-                serverAPI,
-                initActionSet,
-                "CancelInstall",
-                {
-                    shortname: shortname
-                }
-            );
 
-        } catch (error) {
-            logger.error(error);
+    const cancelInstall = async () => {
+        if (isQueueActive) {
+            installQueue.cancelItem(shortname);
+        } else {
+            localInstallingRef.current = false;
+            setLocalInstalling(false);
+            try {
+                await executeAction(
+                    serverAPI,
+                    initActionSet,
+                    "CancelInstall",
+                    { shortname: shortname }
+                );
+            } catch (error) {
+                logger.error(error);
+            }
         }
     };
 
@@ -222,12 +243,11 @@ export const GameDetailsItem: VFC<GameDetailsItemProperties> = ({ serverAPI, sho
     };
 
     const resetLaunchOptions = async () => {
-
         let id = await checkid();
         logger.debug("resetLaunchOptions id:", id);
         configureShortcut(id);
-
     };
+
     const configureShortcut = async (id: number) => {
         const result = await executeAction<ExecuteInstallArgs, ContentType>(
             serverAPI,
@@ -241,16 +261,10 @@ export const GameDetailsItem: VFC<GameDetailsItemProperties> = ({ serverAPI, sho
         if (gameData.Type !== "GameDetails") {
             return;
         }
-        const name = (gameData.Content as GameDetails).Name; //* this should be dealt with
+        const name = (gameData.Content as GameDetails).Name;
 
         const apps = appStore.allApps.filter(app => app.display_name == name && app.app_type == 1073741824 && app.appid != id);
         logger.debug("apps", apps);
-        // for (const app of apps) {
-        //     logger.debug("removing shortcut", app.appid);
-        //     SteamClient.Apps.RemoveShortcut(app.appid);
-        // }
-        //cleanupIds();
-
 
         if (result == null) {
             logger.error("install result is null");
@@ -258,7 +272,6 @@ export const GameDetailsItem: VFC<GameDetailsItemProperties> = ({ serverAPI, sho
         }
         if (result.Type === "LaunchOptions") {
             const launchOptions = result.Content as LaunchOptions;
-            //await SteamClient.Apps.SetAppLaunchOptions(gid, "");
             await appDetailsCache.FetchDataForApp(id)
             await appDetailsStore.RequestAppDetails(id);
             SteamClient.Apps.SetAppLaunchOptions(id, launchOptions.Options);
@@ -283,7 +296,7 @@ export const GameDetailsItem: VFC<GameDetailsItemProperties> = ({ serverAPI, sho
                 logger.debug("Setting compatibility to empty string");
                 SteamClient.Apps.SpecifyCompatTool(id, "");
             }
-            setInstalling(false);
+            setLocalInstalling(false);
             serverAPI.toaster.toast({
                 title: "GameVault",
                 body: "Launch options set",
@@ -291,7 +304,6 @@ export const GameDetailsItem: VFC<GameDetailsItemProperties> = ({ serverAPI, sho
             await appDetailsCache.FetchDataForApp(id)
             await appDetailsStore.RequestAppDetails(id);
             setSteamClientID(id.toString());
-
         }
         const imageResult = await executeAction<ExecuteGetGameDetailsArgs, GameImages>(
             serverAPI,
@@ -323,12 +335,9 @@ export const GameDetailsItem: VFC<GameDetailsItemProperties> = ({ serverAPI, sho
             logger.debug("setting gridh image:" + id)
             await SteamClient.Apps.SetCustomArtworkForApp(id, images.GridH, "png", 3);
         }
-        //await appDetailsStore.RequestAppDetails(id);
-
     };
 
     const cleanupIds = () => {
-        //* wait what? why is this removing all shortcuts with empty display_name?
         const apps = appStore.allApps.filter(app => (app.display_name == "bash" || app.display_name == "") && app.app_type == 1073741824);
         for (const app of apps) {
             logger.debug("removing shortcut", app.appid);
@@ -340,29 +349,20 @@ export const GameDetailsItem: VFC<GameDetailsItemProperties> = ({ serverAPI, sho
         const gameDetails = gameData.Content as GameDetails;
         const name = gameDetails.Name;
         logger.debug("GetSteamId name:", name);
-        // 
         if (gameDetails.SteamClientID != "") {
-
             const steamClientID = parseInt(gameDetails.SteamClientID);
             const apps = appStore.allApps.filter(app => app.appid == steamClientID);
             if (apps.length > 0) {
                 return steamClientID;
             }
-
-
-
         }
-        // else {
         const id = await SteamClient.Apps.AddShortcut("Name", "/bin/bash", "", "");
-        // if (gameData.Type !== "GameDetails") {
-        //     return id;
-        // }
         await appDetailsCache.FetchDataForApp(id)
         await appDetailsStore.RequestAppDetails(id);
         SteamClient.Apps.SetShortcutName(id, (gameData.Content as GameDetails).Name);
         return id;
-        //    }
     };
+
     const install = async () => {
         try {
             const id = await getSteamId();
@@ -423,7 +423,7 @@ export const GameDetailsItem: VFC<GameDetailsItemProperties> = ({ serverAPI, sho
                             uninstaller={uninstall}
                             editors={(gameData.Content as GameDetails).Editors}
                             initActionSet={initActionSet}
-                        runner={() => {
+                            runner={() => {
                                 closeModal && closeModal();
                                 runApp(parseInt(steamClientID), onExeExit)
                             }}
@@ -433,6 +433,7 @@ export const GameDetailsItem: VFC<GameDetailsItemProperties> = ({ serverAPI, sho
                             scriptRunner={runScript}
                             reloadData={reloadData}
                             onExeExit={onExeExit}
+                            queueItem={queueItem}
                         />
                     }
                 </Focusable>

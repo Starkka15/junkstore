@@ -131,6 +131,12 @@ class GameSet:
             c.execute("ALTER TABLE Game ADD COLUMN CloudSaveAutoSync INTEGER DEFAULT 0")
         conn.commit()
 
+        c.execute("PRAGMA table_info(Game)")
+        columns = [column[1] for column in c.fetchall()]
+        if "GameType" not in columns:
+            c.execute("ALTER TABLE Game ADD COLUMN GameType TEXT DEFAULT 'windows'")
+        conn.commit()
+
         conn.close()
 
 

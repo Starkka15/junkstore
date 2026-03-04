@@ -32,7 +32,7 @@ fi
 # Step 3: Backup current plugin
 echo "[3/5] Backing up current installation to ${BACKUP_DIR}..."
 mkdir -p "$BACKUP_DIR"
-cp -a "$PLUGIN_DIR/." "$BACKUP_DIR/"
+sudo cp -a "$PLUGIN_DIR/." "$BACKUP_DIR/"
 echo "Backup created at: ${BACKUP_DIR}"
 
 # Step 4: Extract to temp, then copy into plugin dir
@@ -48,7 +48,7 @@ unzip -q -o "$TMP_ZIP" -d "$TMP_EXTRACT"
 EXTRACTED_DIR=$(find "$TMP_EXTRACT" -mindepth 1 -maxdepth 1 -type d | head -1)
 if [ -z "$EXTRACTED_DIR" ]; then
     echo "ERROR: Could not find extracted directory. Restoring backup..."
-    cp -a "$BACKUP_DIR/." "$PLUGIN_DIR/"
+    sudo cp -a "$BACKUP_DIR/." "$PLUGIN_DIR/"
     rm -rf "$TMP_EXTRACT" "$TMP_ZIP"
     exit 1
 fi
@@ -56,7 +56,7 @@ fi
 # Remove replaceable directories from plugin dir
 for dir in dist scripts py_modules conf_schemas; do
     if [ -d "$PLUGIN_DIR/$dir" ]; then
-        rm -rf "$PLUGIN_DIR/$dir"
+        sudo rm -rf "$PLUGIN_DIR/$dir"
         echo "  Removed old $dir/"
     fi
 done
@@ -64,19 +64,19 @@ done
 # Remove replaceable root files
 for file in main.py plugin.json package.json LICENSE README.md; do
     if [ -f "$PLUGIN_DIR/$file" ]; then
-        rm -f "$PLUGIN_DIR/$file"
+        sudo rm -f "$PLUGIN_DIR/$file"
     fi
 done
 
 # Copy new files into plugin dir
-cp -a "$EXTRACTED_DIR/." "$PLUGIN_DIR/"
+sudo cp -a "$EXTRACTED_DIR/." "$PLUGIN_DIR/"
 
 # Make scripts executable
 if [ -d "$PLUGIN_DIR/scripts" ]; then
-    find "$PLUGIN_DIR/scripts" -type f -exec chmod 755 {} \;
+    sudo find "$PLUGIN_DIR/scripts" -type f -exec chmod 755 {} \;
 fi
 if [ -d "$PLUGIN_DIR/defaults/scripts" ]; then
-    find "$PLUGIN_DIR/defaults/scripts" -type f -exec chmod 755 {} \;
+    sudo find "$PLUGIN_DIR/defaults/scripts" -type f -exec chmod 755 {} \;
 fi
 
 echo "[5/5] Update installed successfully!"

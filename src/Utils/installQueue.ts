@@ -3,11 +3,13 @@ import { ContentResult, ContentType, ExecuteGetGameDetailsArgs, ExecuteInstallAr
 import { executeAction } from "./executeAction";
 import Logger from "./logger";
 
+export type QueueItemStatus = "queued" | "downloading" | "installing" | "done" | "error";
+
 export interface QueueItem {
     shortname: string;
     title: string;
     initActionSet: string;
-    status: "queued" | "downloading" | "installing" | "done" | "error";
+    status: QueueItemStatus;
     progress: number;
     description: string;
 }
@@ -15,22 +17,25 @@ export interface QueueItem {
 export interface QueueState {
     items: QueueItem[];
     isProcessing: boolean;
-    currentIndex: number;
 }
 
 type QueueListener = (state: QueueState) => void;
 
+const STORAGE_KEY = "gv_installQueue";
 const logger = new Logger("InstallQueue");
 
 class InstallQueue {
     private state: QueueState = {
         items: [],
         isProcessing: false,
-        currentIndex: -1,
     };
     private listeners: Set<QueueListener> = new Set();
     private serverAPI: ServerAPI | null = null;
     private cancelled = false;
+
+    constructor() {
+        this.restoreState();
+    }
 
     setServerAPI(api: ServerAPI) {
         this.serverAPI = api;
@@ -38,17 +43,97 @@ class InstallQueue {
 
     subscribe(listener: QueueListener) {
         this.listeners.add(listener);
-        listener(this.state);
+        listener(this.getState());
         return () => this.listeners.delete(listener);
     }
 
     private notify() {
-        const snapshot = { ...this.state, items: [...this.state.items] };
+        this.saveState();
+        const snapshot = this.getState();
         this.listeners.forEach(l => l(snapshot));
     }
 
+    private saveState() {
+        try {
+            // Only persist items that are still pending work
+            const persistItems = this.state.items
+                .filter(i => i.status === "queued" || i.status === "downloading" || i.status === "installing")
+                .map(i => ({
+                    shortname: i.shortname,
+                    title: i.title,
+                    initActionSet: i.initActionSet,
+                    status: i.status,
+                    progress: i.progress,
+                    description: i.description,
+                }));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(persistItems));
+        } catch (e) {
+            logger.error("Failed to save queue state", e);
+        }
+    }
+
+    private restoreState() {
+        try {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (!stored) return;
+            const items: QueueItem[] = JSON.parse(stored);
+            if (!Array.isArray(items) || items.length === 0) return;
+            // Mark any "downloading" or "installing" items as "queued" since we lost
+            // track of them — reconnect() will check their actual status
+            this.state.items = items.map(i => ({
+                ...i,
+                status: i.status === "downloading" || i.status === "installing" ? "queued" : i.status,
+                description: i.status === "downloading" || i.status === "installing" ? "Reconnecting..." : i.description,
+            }));
+        } catch (e) {
+            logger.error("Failed to restore queue state", e);
+        }
+    }
+
+    /**
+     * Call on plugin mount to reconnect to any in-progress downloads
+     * that survived a GameVault close/reopen.
+     */
+    async reconnect() {
+        if (!this.serverAPI) return;
+        const pendingItems = this.state.items.filter(i => i.status === "queued");
+        if (pendingItems.length === 0) return;
+
+        // Check each item's progress to see if it's still downloading
+        for (const item of pendingItems) {
+            try {
+                const progressResult = await executeAction<ExecuteGetGameDetailsArgs, ProgressUpdate>(
+                    this.serverAPI, item.initActionSet, "GetProgress", { shortname: item.shortname }
+                );
+                if (progressResult && progressResult.Content) {
+                    const progress = progressResult.Content;
+                    if (progress.Percentage > 0 && progress.Percentage < 100) {
+                        // Download still running in the background
+                        item.status = "downloading";
+                        item.progress = progress.Percentage;
+                        item.description = progress.Description || "Downloading...";
+                    } else if (progress.Percentage >= 100) {
+                        // Download completed while we were away
+                        item.status = "downloading";
+                        item.progress = 100;
+                        item.description = "Download complete, setting up...";
+                    }
+                }
+            } catch (e) {
+                logger.debug("Reconnect check failed for " + item.shortname, e);
+            }
+        }
+        this.notify();
+        // Start processing if we found active items
+        if (this.state.items.some(i => i.status === "queued" || i.status === "downloading")) {
+            this.start();
+        }
+    }
+
     add(shortname: string, title: string, initActionSet: string) {
-        if (this.state.items.some(i => i.shortname === shortname)) return;
+        if (this.state.items.some(i => i.shortname === shortname && i.status !== "done" && i.status !== "error")) return;
+        // Remove any completed/errored entry for this game first
+        this.state.items = this.state.items.filter(i => i.shortname !== shortname || (i.status !== "done" && i.status !== "error"));
         this.state.items.push({
             shortname,
             title,
@@ -58,9 +143,35 @@ class InstallQueue {
             description: "Queued",
         });
         this.notify();
+        // Auto-start queue processing
+        if (!this.state.isProcessing) {
+            this.start();
+        }
     }
 
     remove(shortname: string) {
+        const item = this.state.items.find(i => i.shortname === shortname);
+        if (item && item.status === "downloading") {
+            // Cancel active download
+            this.cancelItem(shortname);
+            return;
+        }
+        this.state.items = this.state.items.filter(i => i.shortname !== shortname);
+        this.notify();
+    }
+
+    async cancelItem(shortname: string) {
+        const item = this.state.items.find(i => i.shortname === shortname);
+        if (!item || !this.serverAPI) return;
+        if (item.status === "downloading") {
+            try {
+                await executeAction<ExecuteGetGameDetailsArgs, ContentType>(
+                    this.serverAPI, item.initActionSet, "CancelInstall", { shortname }
+                );
+            } catch (e) {
+                logger.error("Failed to cancel download", e);
+            }
+        }
         this.state.items = this.state.items.filter(i => i.shortname !== shortname);
         this.notify();
     }
@@ -69,14 +180,56 @@ class InstallQueue {
         if (this.state.isProcessing) {
             this.cancelled = true;
         }
+        // Cancel any active downloads
+        const downloading = this.state.items.find(i => i.status === "downloading");
+        if (downloading && this.serverAPI) {
+            executeAction<ExecuteGetGameDetailsArgs, ContentType>(
+                this.serverAPI, downloading.initActionSet, "CancelInstall", { shortname: downloading.shortname }
+            ).catch(() => {});
+        }
         this.state.items = [];
         this.state.isProcessing = false;
-        this.state.currentIndex = -1;
+        this.notify();
+    }
+
+    clearCompleted() {
+        this.state.items = this.state.items.filter(i => i.status !== "done" && i.status !== "error");
+        this.notify();
+    }
+
+    moveUp(shortname: string) {
+        const idx = this.state.items.findIndex(i => i.shortname === shortname);
+        if (idx <= 0) return;
+        const prev = this.state.items[idx - 1];
+        // Can't move above an actively downloading/installing item
+        if (prev.status === "downloading" || prev.status === "installing") return;
+        [this.state.items[idx - 1], this.state.items[idx]] = [this.state.items[idx], this.state.items[idx - 1]];
+        this.notify();
+    }
+
+    moveDown(shortname: string) {
+        const idx = this.state.items.findIndex(i => i.shortname === shortname);
+        if (idx < 0 || idx >= this.state.items.length - 1) return;
+        [this.state.items[idx], this.state.items[idx + 1]] = [this.state.items[idx + 1], this.state.items[idx]];
         this.notify();
     }
 
     getState(): QueueState {
         return { ...this.state, items: [...this.state.items] };
+    }
+
+    getItemStatus(shortname: string): QueueItem | undefined {
+        return this.state.items.find(i => i.shortname === shortname);
+    }
+
+    getQueuePosition(shortname: string): number {
+        const queued = this.state.items.filter(i => i.status === "queued");
+        const idx = queued.findIndex(i => i.shortname === shortname);
+        return idx >= 0 ? idx + 1 : -1;
+    }
+
+    get activeCount(): number {
+        return this.state.items.filter(i => i.status === "downloading" || i.status === "installing" || i.status === "queued").length;
     }
 
     get queuedCount(): number {
@@ -93,18 +246,16 @@ class InstallQueue {
         this.state.isProcessing = true;
         this.notify();
 
-        for (let i = 0; i < this.state.items.length; i++) {
+        // Continuously drain the queue — new items added during processing
+        // will be picked up automatically
+        while (true) {
             if (this.cancelled) break;
-
-            const item = this.state.items[i];
-            if (item.status !== "queued") continue;
-
-            this.state.currentIndex = i;
-            await this.processItem(item);
+            const nextItem = this.state.items.find(i => i.status === "queued");
+            if (!nextItem) break;
+            await this.processItem(nextItem);
         }
 
         this.state.isProcessing = false;
-        this.state.currentIndex = -1;
         this.notify();
 
         // Toast completion summary
@@ -114,7 +265,7 @@ class InstallQueue {
             const total = done + errors;
             if (total > 0) {
                 this.serverAPI.toaster.toast({
-                    title: "Batch Install Complete",
+                    title: "GameVault",
                     body: errors > 0
                         ? `${done}/${total} games installed (${errors} failed)`
                         : `${done} game${done > 1 ? 's' : ''} installed successfully`,
@@ -149,6 +300,8 @@ class InstallQueue {
             while (!this.cancelled) {
                 await sleep(pollInterval);
                 if (this.cancelled) break;
+                // Check if this item was removed from queue while downloading
+                if (!this.state.items.includes(item)) return;
 
                 const progressResult = await executeAction<ExecuteGetGameDetailsArgs, ProgressUpdate>(
                     api, item.initActionSet, "GetProgress", { shortname: item.shortname }
@@ -263,6 +416,8 @@ class InstallQueue {
                             logger.error("Error getting compat tools", e);
                         }
                     }
+                } else {
+                    SteamClient.Apps.SpecifyCompatTool(steamId, "");
                 }
             }
 

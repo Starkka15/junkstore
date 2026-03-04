@@ -27,6 +27,7 @@ import { getAppDetails } from '../Utils/utils';
 import { ScrollableWindow } from '../ScrollableWindow';
 import { appActionButtonClasses, basicAppDetailsClasses } from '../staticClasses';
 import { executeAction } from '../Utils/executeAction';
+import { QueueItem, installQueue } from '../Utils/installQueue';
 
 
 interface GameDisplayProperties {
@@ -51,6 +52,7 @@ interface GameDisplayProperties {
     scriptRunner: (actionSet: string, actionId: string, args: any) => void;
     reloadData: () => void;
     onExeExit: () => void;
+    queueItem?: QueueItem;
 }
 
 
@@ -75,7 +77,8 @@ const GameDisplay: VFC<GameDisplayProperties> = (
         resetLaunchOptions,
         scriptRunner,
         reloadData,
-        onExeExit
+        onExeExit,
+        queueItem
     }
 ) => {
     const logger = new Logger("GameDisplay");
@@ -260,7 +263,7 @@ const GameDisplay: VFC<GameDisplayProperties> = (
                                     className={installing ? 'DialogButton' : joinClassNames(appActionButtonClasses.PlayButton, appActionButtonClasses.ButtonChild)}
                                     onClick={installing ? cancelInstall : !isInstalled ? installer : runner}
                                 >
-                                    {installing ? 'Cancel' : !isInstalled ? 'Install Game' : hasUpdate ? 'Play Game (Update Available)' : 'Play Game'}
+                                    {getButtonLabel(installing, isInstalled, hasUpdate, queueItem)}
                                 </Button>
                             </div>
                             <div style={{ display: 'flex', gap: '15px', height: '100%' }}>
@@ -293,12 +296,43 @@ const GameDisplay: VFC<GameDisplayProperties> = (
                         {steamClientID && (<div style={{ marginTop: '20px' }}>
                             Steam Client ID: {steamClientID}
                         </div>)}
+                        {installing && queueItem && (
+                            <div style={{ marginTop: '10px' }}>
+                                <DialogButton
+                                    onClick={() => {
+                                        closeModal && closeModal();
+                                        Navigation.Navigate('/gamevault-downloads');
+                                    }}
+                                    style={{ fontSize: '12px', padding: '6px 12px', minWidth: 'initial' }}
+                                >
+                                    View Downloads
+                                </DialogButton>
+                            </div>
+                        )}
                     </ScrollableWindow>
                 </div>
             </FocusOnMount>
         </>
     );
 };
+
+function getButtonLabel(installing: boolean, isInstalled: boolean, hasUpdate: boolean, queueItem?: QueueItem): string {
+    if (installing) {
+        if (queueItem?.status === "queued") {
+            const pos = installQueue.getQueuePosition(queueItem.shortname);
+            return pos > 0 ? `Queued (#${pos})` : 'Queued';
+        }
+        if (queueItem?.status === "downloading") return 'Cancel Download';
+        if (queueItem?.status === "installing") return 'Installing...';
+        return 'Cancel';
+    }
+    if (!isInstalled) {
+        // Check if queue is currently processing other items
+        if (installQueue.isProcessing) return 'Add to Queue';
+        return 'Install Game';
+    }
+    return hasUpdate ? 'Play Game (Update Available)' : 'Play Game';
+}
 
 interface ImageMarqueeProps {
     sources: string[];

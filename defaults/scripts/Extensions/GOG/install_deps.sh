@@ -10,6 +10,14 @@ function download_and_install() {
 
     flatpak --user install "gogdl.flatpak" -y
     rm -f gogdl.flatpak
+
+    # Native emulators for DOSBox/ScummVM GOG games
+    flatpak --user install flathub io.github.dosbox-staging -y || true
+    flatpak --user install flathub org.scummvm.ScummVM -y || true
+
+    # Grant filesystem access so emulators can reach game files anywhere
+    flatpak override --user --filesystem=host io.github.dosbox-staging 2>/dev/null || true
+    flatpak override --user --filesystem=host org.scummvm.ScummVM 2>/dev/null || true
 }
 
 function install() {
@@ -25,6 +33,12 @@ function uninstall() {
     echo "Uninstalling flatpaks"
     if flatpak list | grep -q "com.github.heroic_games_launcher.heroic-gogdl"; then
         flatpak uninstall com.github.heroic_games_launcher.heroic-gogdl -y
+    fi
+    if flatpak list | grep -q "io.github.dosbox-staging"; then
+        flatpak uninstall io.github.dosbox-staging -y
+    fi
+    if flatpak list | grep -q "org.scummvm.ScummVM"; then
+        flatpak uninstall org.scummvm.ScummVM -y
     fi
     flatpak uninstall --unused -y
 }

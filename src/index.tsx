@@ -13,6 +13,8 @@ import { About } from "./About";
 import { addAchievement, getAchievementDetails, toastAchievement, toastFactory } from "./Utils/achievements";
 import Logger from "./Utils/logger";
 import { MainMenuModal } from "./MainMenuModal";
+import { DownloadsPage } from "./Components/DownloadsPage";
+import { installQueue } from "./Utils/installQueue";
 
 
 
@@ -86,6 +88,18 @@ export default definePlugin((serverApi: ServerAPI) => {
       exact: true,
     }
   );
+  serverApi.routerHook.addRoute(
+    "/gamevault-downloads",
+    () => {
+      return <DownloadsPage />
+    },
+    {
+      exact: true,
+    }
+  );
+  // Initialize install queue with server API and reconnect to any in-progress downloads
+  installQueue.setServerAPI(serverApi);
+  installQueue.reconnect();
 
 
 
@@ -97,6 +111,7 @@ export default definePlugin((serverApi: ServerAPI) => {
     onDismount() {
       serverApi.routerHook.removeRoute("/gamevault-content/:initActionSet/:initAction");
       serverApi.routerHook.removeRoute("/about-gamevault");
+      serverApi.routerHook.removeRoute("/gamevault-downloads");
       unregister.unregister();
     },
   };

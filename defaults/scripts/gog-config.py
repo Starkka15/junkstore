@@ -52,6 +52,10 @@ class GOGArgs(GameSet.GenericArgs):
             '--toggle-autosync', help='Toggle cloud save auto-sync')
         self.parser.add_argument(
             '--get-autosync', help='Check if auto-sync is enabled')
+        self.parser.add_argument(
+            '--get-game-type', help='Get game type (windows/dosbox/scummvm)')
+        self.parser.add_argument(
+            '--retrodetect', help='Retrodetect game types for installed games', action='store_true')
 
     def parseArgs(self):
         super().parseArgs()
@@ -108,6 +112,10 @@ class GOGArgs(GameSet.GenericArgs):
                 print(self.gameSet.toggle_autosync(self.args.toggle_autosync))
             if self.args.get_autosync:
                 print(self.gameSet.get_autosync_enabled(self.args.get_autosync))
+            if self.args.get_game_type:
+                print(self.gameSet.get_game_type(self.args.get_game_type))
+            if self.args.retrodetect:
+                self.gameSet.retrodetect_game_types()
             if not any(vars(self.args).values()):
                 self.parser.print_help()
         except gog.CmdException as e:

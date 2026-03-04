@@ -230,31 +230,35 @@ export const GridContent: VFC<GridContentProps> = ({ content, serverAPI, initAct
                     </DialogButton>
                 </div>
             )}
-            {queueState.isProcessing && (
-                <div style={{
-                    marginTop: '8px', padding: '8px 12px',
-                    backgroundColor: '#1a1a2e', borderRadius: '8px',
-                    border: '1px solid #2a2a4a'
-                }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                        <span style={{ fontSize: '12px' }}>
-                            Batch Install: {queueState.items.filter(i => i.status === 'done').length}/{queueState.items.length}
-                        </span>
-                        <DialogButton onClick={() => installQueue.clear()}
-                            style={{ padding: '2px 8px', fontSize: '11px', minWidth: 'initial', height: 'auto' }}>
-                            Cancel
-                        </DialogButton>
-                    </div>
-                    {queueState.items.filter(i => i.status === 'downloading' || i.status === 'installing').map(item => (
-                        <div key={item.shortname}>
-                            <div style={{ fontSize: '11px', color: '#b0b0b0', marginBottom: '2px' }}>
-                                {item.title}: {item.description}
-                            </div>
-                            <ProgressBar nProgress={item.progress} />
+            {queueState.isProcessing && (() => {
+                const current = queueState.items.find(i => i.status === 'downloading' || i.status === 'installing');
+                const queuedCount = queueState.items.filter(i => i.status === 'queued').length;
+                if (!current) return null;
+                return (
+                    <Focusable
+                        onActivate={() => Navigation.Navigate('/gamevault-downloads')}
+                        onOKActionDescription="View Downloads"
+                        noFocusRing={true}
+                        style={{
+                            marginTop: '8px', padding: '8px 12px',
+                            backgroundColor: '#1a1a2e', borderRadius: '8px',
+                            border: '1px solid #2a2a4a', cursor: 'pointer',
+                        }}
+                    >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                            <span style={{ fontSize: '12px', color: '#b0b0b0' }}>
+                                {current.title} — {current.description}
+                            </span>
+                            {queuedCount > 0 && (
+                                <span style={{ fontSize: '11px', color: '#1a9fff' }}>
+                                    +{queuedCount} queued
+                                </span>
+                            )}
                         </div>
-                    ))}
-                </div>
-            )}
+                        <ProgressBar nProgress={current.progress} />
+                    </Focusable>
+                );
+            })()}
             {content.NeedsLogin === "true" && (
                 <div style={{ paddingTop: '15px' }}>
                     <LoginContent serverAPI={serverAPI} initActionSet={initActionSet} initAction="GetLoginActions" />
