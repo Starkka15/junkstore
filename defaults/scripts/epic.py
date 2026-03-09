@@ -301,12 +301,18 @@ class Epic(GamesDb.GamesDb):
 
     def has_updates(self, game_id, offline):
         offline_switch = "--offline" if offline else ""
-        result = self.execute_shell(os.path.expanduser(
-            f"{self.legendary_cmd} info {game_id} --json {offline_switch}"))
-        json_result = json.loads(result)
-        if json_result['game']['version'] != json_result['install']['version']:
-            return json.dumps({'Type': 'UpdateAvailable', 'Content': True})
-        return json.dumps({'Type': 'UpdateAvailable', 'Content': False})
+        try:
+            result = self.execute_shell(os.path.expanduser(
+                f"{self.legendary_cmd} info {game_id} --json {offline_switch}"))
+            install = result.get('install')
+            if not install or not install.get('version'):
+                return json.dumps({'Type': 'UpdateAvailable', 'Content': False})
+            if result['game']['version'] != install['version']:
+                return json.dumps({'Type': 'UpdateAvailable', 'Content': True})
+            return json.dumps({'Type': 'UpdateAvailable', 'Content': False})
+        except Exception as e:
+            print(f"Error checking updates for {game_id}: {e}", file=sys.stderr)
+            return json.dumps({'Type': 'UpdateAvailable', 'Content': False})
 
     def get_lauch_options(self, game_id, steam_command, name, offline):
         offline_switch = "--offline" if offline else ""
@@ -358,12 +364,6 @@ class Epic(GamesDb.GamesDb):
                 (title, size, game_id))
             conn.commit()
             conn.close()
-
-    def insert_game(self, game):
-        conn = self.get_connection()
-        c = conn.cursor()
-
-    
 
     # [DLManager] INFO: = Progress: 0.51% (368/72002), Running for 00:01:58, ETA: 06:23:02
     # [DLManager] INFO:  - Downloaded: 316.12 MiB, Written: 361.03 MiB

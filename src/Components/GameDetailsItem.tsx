@@ -69,8 +69,9 @@ export const GameDetailsItem: VFC<GameDetailsItemProperties> = ({ serverAPI, sho
     }, [shortname]);
 
     useEffect(() => {
-        reaction(() => SteamUIStore.WindowStore.GamepadUIMainWindowInstance?.LocationPathName, closeModal)
+        const dispose = reaction(() => SteamUIStore.WindowStore.GamepadUIMainWindowInstance?.LocationPathName, closeModal);
         onInit();
+        return dispose;
     }, []);
 
     const reloadData = async () => {
@@ -166,7 +167,8 @@ export const GameDetailsItem: VFC<GameDetailsItemProperties> = ({ serverAPI, sho
                     shortname: shortname
                 }
             );
-            SteamClient.Apps.RemoveShortcut(parseInt(steamClientID));
+            const sid = parseInt(steamClientID, 10);
+            if (!Number.isNaN(sid)) SteamClient.Apps.RemoveShortcut(sid);
             setSteamClientID("");
         } catch (error) {
             logger.error(error);
@@ -232,7 +234,7 @@ export const GameDetailsItem: VFC<GameDetailsItemProperties> = ({ serverAPI, sho
     };
 
     const checkid = async () => {
-        let id = parseInt(steamClientID);
+        let id = parseInt(steamClientID, 10);
         logger.debug("checkid", id);
         const apps = appStore.allApps.filter(app => app.appid == id && app.per_client_data[0].client_name == "This Machine");
         if (apps.length == 0) {
@@ -338,7 +340,8 @@ export const GameDetailsItem: VFC<GameDetailsItemProperties> = ({ serverAPI, sho
     };
 
     const cleanupIds = () => {
-        const apps = appStore.allApps.filter(app => (app.display_name == "bash" || app.display_name == "") && app.app_type == 1073741824);
+        // Only clean up shortcuts named "bash" (our placeholder name from AddShortcut)
+        const apps = appStore.allApps.filter(app => app.display_name == "bash" && app.app_type == 1073741824);
         for (const app of apps) {
             logger.debug("removing shortcut", app.appid);
             SteamClient.Apps.RemoveShortcut(app.appid);
@@ -350,13 +353,17 @@ export const GameDetailsItem: VFC<GameDetailsItemProperties> = ({ serverAPI, sho
         const name = gameDetails.Name;
         logger.debug("GetSteamId name:", name);
         if (gameDetails.SteamClientID != "") {
-            const steamClientID = parseInt(gameDetails.SteamClientID);
+            const steamClientID = parseInt(gameDetails.SteamClientID, 10);
             const apps = appStore.allApps.filter(app => app.appid == steamClientID);
             if (apps.length > 0) {
                 return steamClientID;
             }
         }
         const id = await SteamClient.Apps.AddShortcut("Name", "/bin/bash", "", "");
+        if (!id || id <= 0) {
+            logger.error("AddShortcut returned invalid id:", id);
+            throw new Error("Failed to create Steam shortcut");
+        }
         await appDetailsCache.FetchDataForApp(id)
         await appDetailsStore.RequestAppDetails(id);
         SteamClient.Apps.SetShortcutName(id, (gameData.Content as GameDetails).Name);
@@ -425,7 +432,8 @@ export const GameDetailsItem: VFC<GameDetailsItemProperties> = ({ serverAPI, sho
                             initActionSet={initActionSet}
                             runner={() => {
                                 closeModal && closeModal();
-                                runApp(parseInt(steamClientID), onExeExit)
+                                const rid = parseInt(steamClientID, 10);
+                            if (!Number.isNaN(rid)) runApp(rid, onExeExit)
                             }}
                             actions={scriptActions}
                             resetLaunchOptions={resetLaunchOptions}

@@ -371,6 +371,11 @@ class Itchio(GamesDb.GamesDb):
         try:
             if file_type == 'zip':
                 with zipfile.ZipFile(file_path, 'r') as zf:
+                    # Validate no path traversal
+                    for member in zf.namelist():
+                        member_path = os.path.realpath(os.path.join(extract_dir, member))
+                        if not member_path.startswith(os.path.realpath(extract_dir) + os.sep) and member_path != os.path.realpath(extract_dir):
+                            raise CmdException(f"Path traversal detected in zip: {member}")
                     zf.extractall(extract_dir)
 
             elif file_type in ('tar.gz', 'tar.bz2', 'tar.xz', 'tar'):
@@ -381,6 +386,11 @@ class Itchio(GamesDb.GamesDb):
                     'tar': 'r:'
                 }[file_type]
                 with tarfile.open(file_path, mode) as tf:
+                    # Validate no path traversal
+                    for member in tf.getmembers():
+                        member_path = os.path.realpath(os.path.join(extract_dir, member.name))
+                        if not member_path.startswith(os.path.realpath(extract_dir) + os.sep) and member_path != os.path.realpath(extract_dir):
+                            raise CmdException(f"Path traversal detected in tar: {member.name}")
                     tf.extractall(extract_dir)
 
             elif file_type == 'rar':

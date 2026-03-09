@@ -1,6 +1,7 @@
 import asyncio
 import os
 import json
+import ssl
 import sys
 
 from aiohttp import web
@@ -11,6 +12,25 @@ import shutil
 import aiohttp
 import os
 import concurrent.futures
+
+
+def _make_ssl_context():
+    """Create an SSL context that works on Steam Deck.
+    Tries system CA certs first, then certifi, then falls back to no verification."""
+    try:
+        ctx = ssl.create_default_context()
+        # Test that it has CA certs loaded
+        if ctx.get_ca_certs():
+            return ctx
+    except Exception:
+        pass
+    try:
+        import certifi
+        return ssl.create_default_context(cafile=certifi.where())
+    except Exception:
+        pass
+    # Last resort: disable verification (original behavior)
+    return False
 
 
 class Helper:
@@ -215,6 +235,15 @@ class Helper:
                     app_id=app_id,
                     game_id=game_id,
                 )
+                if result is None:
+                    return {
+                        "Type": "Error",
+                        "Content": {
+                            "Message": "Script returned no output",
+                            "ActionName": actionName,
+                            "ActionSet": actionSet,
+                        },
+                    }
                 if Helper.verbose:
                     decky_plugin.logger.info(f"execute_action result: {result}")
                 try:
@@ -340,7 +369,7 @@ class Helper:
             # Step 1: Download
             await send("[1/5] Downloading update...\n")
             try:
-                async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
+                async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=_make_ssl_context())) as session:
                     async with session.get(download_url, allow_redirects=True) as response:
                         if response.status != 200:
                             await send(f"ERROR: Download failed with status {response.status}. No changes made.\n")
@@ -473,8 +502,11 @@ class Helper:
                 if data["action"] == "self_update":
                     download_url = data.get("download_url", "")
                     sudo_password = data.get("sudo_password", "")
-                    if download_url:
+                    # Only allow updates from our GitHub repo
+                    if download_url and ("github.com/Starkka15/junkstore" in download_url or "github.com/ebenbruyns/junkstore" in download_url):
                         await Helper.perform_self_update(download_url, websocket, sudo_password)
+                    elif download_url:
+                        decky_plugin.logger.error(f"Rejected self-update from untrusted URL: {download_url}")
 
         except Exception as e:
             decky_plugin.logger.error(f"Error in ws_handler: {e}")
@@ -669,7 +701,7 @@ class Plugin:
 
             api_url = "https://api.github.com/repos/Starkka15/junkstore/releases/latest"
             async with aiohttp.ClientSession(
-                connector=aiohttp.TCPConnector(ssl=False)
+                connector=aiohttp.TCPConnector(ssl=_make_ssl_context())
             ) as session:
                 async with session.get(api_url, headers={"Accept": "application/vnd.github.v3+json"}) as response:
                     if response.status != 200:
@@ -751,7 +783,7 @@ class Plugin:
             temp_file = "/tmp/custom_backend.zip"
             # disabling ssl verfication for testing, github doesn't seem to have a valid ssl cert, seems wrong
             async with aiohttp.ClientSession(
-                connector=aiohttp.TCPConnector(ssl=False)
+                connector=aiohttp.TCPConnector(ssl=_make_ssl_context())
             ) as session:
                 decky_plugin.logger.info(f"Downloading {url}")
                 async with session.get(url, allow_redirects=True) as response:
@@ -792,6 +824,11 @@ class Plugin:
                 decky_plugin.logger.info("Backup completed successfully")
 
             with zipfile.ZipFile(temp_file, "r") as zip_ref:
+                # Validate all paths before extraction (path traversal check)
+                for member in zip_ref.namelist():
+                    member_path = os.path.realpath(os.path.join(runtime_dir, member))
+                    if not member_path.startswith(os.path.realpath(runtime_dir) + os.sep) and member_path != os.path.realpath(runtime_dir):
+                        raise Exception(f"Path traversal detected in zip: {member}")
                 zip_ref.extractall(runtime_dir)
                 scripts_dir = os.path.join(
                     decky_plugin.DECKY_PLUGIN_RUNTIME_DIR, "scripts"
@@ -801,6 +838,8 @@ class Plugin:
                         file_path = os.path.join(root, file)
                         os.chmod(file_path, 0o755)
 
+            # Clear action cache so new scripts are picked up
+            Helper.action_cache.clear()
             decky_plugin.logger.info("Download and extraction completed successfully")
 
         except Exception as e:
@@ -989,18 +1028,23 @@ class Plugin:
         for file in os.listdir(log_dir):
             if file.endswith(".log"):
                 file_path = os.path.join(log_dir, file)
-                with open(file_path, "r") as f:
-                    content = f.read()
-                    log_files.append({"FileName": file, "Content": content})
+                try:
+                    with open(file_path, "r") as f:
+                        content = f.read()
+                        log_files.append({"FileName": file, "Content": content})
+                except Exception:
+                    pass
         log_files.sort(key=lambda x: x["FileName"], reverse=True)
-        with open(
-            os.path.join(
-                decky_plugin.DECKY_USER_HOME, ".local/share/Steam/logs/console_log.txt"
-            ),
-            "r",
-        ) as f:
-            content = f.read()
-            log_files.append({"FileName": "console_log.txt", "Content": content})
+        console_log = os.path.join(
+            decky_plugin.DECKY_USER_HOME, ".local/share/Steam/logs/console_log.txt"
+        )
+        if os.path.exists(console_log):
+            try:
+                with open(console_log, "r") as f:
+                    content = f.read()
+                    log_files.append({"FileName": "console_log.txt", "Content": content})
+            except Exception:
+                pass
 
         return log_files
 
@@ -1011,8 +1055,9 @@ class Plugin:
             # Stop WebSocket server
             await Helper.stop_ws_server()
 
-            # Cancel all pending asyncio tasks
-            tasks = [task for task in asyncio.all_tasks() if not task.done()]
+            # Cancel all pending asyncio tasks except this one
+            current_task = asyncio.current_task()
+            tasks = [task for task in asyncio.all_tasks() if not task.done() and task is not current_task]
             if tasks:
                 decky_plugin.logger.info(f"Cancelling {len(tasks)} pending tasks...")
                 for task in tasks:

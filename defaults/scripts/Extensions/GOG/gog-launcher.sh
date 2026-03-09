@@ -74,9 +74,8 @@ if [[ "${RUNTIMES_BATTLEYE}" == "true"  ]]; then
     export PROTON_BATTLEYE_RUNTIME="${HOME}/.steam/root/steamapps/common/Proton BattlEye Runtime/"
 fi
 
-if [ -z "${RUNTIMES_PULSE_LATENCY_MSEC}" ]; then
+if [ -n "${RUNTIMES_PULSE_LATENCY_MSEC}" ]; then
     export PULSE_LATENCY_MSEC=$RUNTIMES_PULSE_LATENCY_MSEC
-
 fi
 if [[ "${RUNTIMES_RADV_PERFTEST}" == "" ]]; then
     unset RADV_PERFTEST
@@ -121,10 +120,13 @@ fi
 
 
 echo "ARGS: ${ARGS}" &>> "${DECKY_PLUGIN_LOG_DIR}/${ID}.log"
-for arg in $ARGS; do
+while IFS= read -r -d '' arg; do
     QUOTED_ARGS+=" ${arg}"
-
-done
+done < <(xargs printf '%s\0' <<< "${ARGS}" 2>/dev/null)
+# Fallback if xargs fails (no args)
+if [[ -n "${ARGS}" && "${QUOTED_ARGS}" == "" ]]; then
+    QUOTED_ARGS+=" ${ARGS}"
+fi
 
 pushd "${DECKY_PLUGIN_DIR}"
 GAME_PATH=$($GOGCONF --get-game-dir "$ID" --dbfile $DBFILE)
@@ -153,7 +155,7 @@ fi
 
 if [ -f "$HOME/.local/lib/liblsfg-vk.so" ]; then
     if [[ "${DISABLE_LSFGVK}" != "1" && "${DISABLE_LSFGVK}" != "true" ]]; then
-        export LD_PRELOAD="$HOME/.local/lib/:${LD_PRELOAD}"
+        export LD_PRELOAD="$HOME/.local/lib/liblsfg-vk.so:${LD_PRELOAD}"
         echo "LSFG-VK enabled" &>> "${DECKY_PLUGIN_LOG_DIR}/${ID}.log"
     else
         echo "LSFG-VK disabled for this game" &>> "${DECKY_PLUGIN_LOG_DIR}/${ID}.log"
@@ -172,7 +174,12 @@ fi
 
 eval "$(echo -e "${ADVANCED_VARIABLES}")" &>> "${DECKY_PLUGIN_LOG_DIR}/${ID}.log"
 eval "$(echo -e "$QUOTED_ARGS")"  &>> "${DECKY_PLUGIN_LOG_DIR}/${ID}.log"
+GAME_EXIT_CODE=$?
 
 if [[ "${AUTOSYNC}" == "1" ]]; then
-    upload-saves
+    if [[ ${GAME_EXIT_CODE} -eq 0 ]]; then
+        upload-saves
+    else
+        echo "[cloud-save] Skipping upload: game exited with code ${GAME_EXIT_CODE}" &>> "${DECKY_PLUGIN_LOG_DIR}/${ID}.log"
+    fi
 fi

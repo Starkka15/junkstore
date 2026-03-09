@@ -13,7 +13,7 @@ if [[ "${PLATFORM}" == "Epic" ]]; then
 fi
 
 function Epic_init() {
-    $EPICCONF --list --dbfile $DBFILE $OFFLINE_MODE  &> /dev/null
+    $EPICCONF --list --dbfile "$DBFILE" $OFFLINE_MODE  &> /dev/null
 }
 
 function Epic_refresh() {
@@ -37,24 +37,24 @@ function Epic_getgames(){
         LIMIT="${3}"
     fi
     IMAGE_PATH=""
-    TEMP=$($EPICCONF --getgameswithimages "${IMAGE_PATH}" "${FILTER}" "${INSTALLED}" "${LIMIT}" "true" --dbfile $DBFILE)
+    TEMP=$($EPICCONF --getgameswithimages "${IMAGE_PATH}" "${FILTER}" "${INSTALLED}" "${LIMIT}" "true" --dbfile "$DBFILE")
     # This might be a bit fragile, but it should work for now.
     # checking if the Game's content is empty, if it is, then we need to refresh the list
-    echo $TEMP >> $DECKY_PLUGIN_LOG_DIR/debug.log
+    echo "$TEMP" >> $DECKY_PLUGIN_LOG_DIR/debug.log
     if echo "$TEMP" | jq -e '.Content.Games | length == 0' &>/dev/null; then
         if [[ $FILTER == "" ]] && [[ $INSTALLED == "false" ]]; then
             TEMP=$(Epic_init)
-            TEMP=$($EPICCONF --getgameswithimages "${IMAGE_PATH}" "${FILTER}" "${INSTALLED}" "${LIMIT}" "true" --dbfile $DBFILE)
+            TEMP=$($EPICCONF --getgameswithimages "${IMAGE_PATH}" "${FILTER}" "${INSTALLED}" "${LIMIT}" "true" --dbfile "$DBFILE")
         fi
     fi
-    echo $TEMP
+    echo "$TEMP"
 }
 function Epic_saveplatformconfig(){
-    cat | $EPICCONF --parsejson "${1}" --dbfile $DBFILE --platform Proton --fork "" --version "" --dbfile $DBFILE
+    cat | $EPICCONF --parsejson "${1}" --dbfile "$DBFILE" --platform Proton --fork "" --version "" --dbfile "$DBFILE"
 }
 function Epic_getplatformconfig(){
-    TEMP=$($EPICCONF --confjson "${1}" --platform Proton --fork "" --version "" --dbfile $DBFILE)
-    echo $TEMP
+    TEMP=$($EPICCONF --confjson "${1}" --platform Proton --fork "" --version "" --dbfile "$DBFILE")
+    echo "$TEMP"
 }
 
 function Epic_cancelinstall(){
@@ -71,7 +71,7 @@ function Epic_download(){
     PROGRESS_LOG="${DECKY_PLUGIN_LOG_DIR}/${1}.progress"
     # attempting to fix path issues if an install failed.
     $LEGENDARY move "${1}" "${INSTALL_DIR}" --skip-move &>> ${DECKY_PLUGIN_LOG_DIR}/debug.log
-    GAME_DIR=$($EPICCONF --get-game-dir "${1}" --dbfile $DBFILE)
+    GAME_DIR=$($EPICCONF --get-game-dir "${1}" --dbfile "$DBFILE")
      
     updategamedetailsaftercmd $1 $LEGENDARY install $1 --skip-sdl --enable-reordering --max-shared-memory 8192 --with-dlcs -y --platform Windows --base-path "${INSTALL_DIR}"  2> $PROGRESS_LOG > "${DECKY_PLUGIN_LOG_DIR}/${1}.output" &
     echo $! > "${DECKY_PLUGIN_LOG_DIR}/${1}.pid"
@@ -109,7 +109,7 @@ function Epic_download-saves(){
         echo '{"Type": "Error", "Content": {"Message": "No SteamClientID - launch game once first"}}'
         return
     fi
-    SAVE_PATH=$($EPICCONF --get-save-path "${1}" "${STEAM_CLIENT_ID}" --dbfile $DBFILE)
+    SAVE_PATH=$($EPICCONF --get-save-path "${1}" "${STEAM_CLIENT_ID}" --dbfile "$DBFILE")
     if [[ -z "${SAVE_PATH}" ]]; then
         echo '{"Type": "Error", "Content": {"Message": "No cloud save path found for this game"}}'
         return
@@ -126,7 +126,7 @@ function Epic_upload-saves(){
         echo '{"Type": "Error", "Content": {"Message": "No SteamClientID - launch game once first"}}'
         return
     fi
-    SAVE_PATH=$($EPICCONF --get-save-path "${1}" "${STEAM_CLIENT_ID}" --dbfile $DBFILE)
+    SAVE_PATH=$($EPICCONF --get-save-path "${1}" "${STEAM_CLIENT_ID}" --dbfile "$DBFILE")
     if [[ -z "${SAVE_PATH}" ]]; then
         echo '{"Type": "Error", "Content": {"Message": "No cloud save path found for this game"}}'
         return
@@ -168,7 +168,7 @@ function Epic_protontricks(){
 #this needs more thought
 function Epic_import(){
     PROGRESS_LOG="${DECKY_PLUGIN_LOG_DIR}/${1}.progress"
-     GAME_DIR=$($EPICCONF --get-game-dir "${1}" --dbfile $DBFILE $OFFLINE_MODE)
+     GAME_DIR=$($EPICCONF --get-game-dir "${1}" --dbfile "$DBFILE" $OFFLINE_MODE)
     if [ -d "${GAME_DIR}" ]; then
         updategamedetailsaftercmd $1 $LEGENDARY import $1 "${GAME_DIR}" $OFFLINE_MODE >> "${DECKY_PLUGIN_LOG_DIR}/${1}.log" 2>> $PROGRESS_LOG &
         echo $! > "${DECKY_PLUGIN_LOG_DIR}/${1}.pid"
@@ -194,29 +194,29 @@ function Epic_move(){
 
 }
 function Epic_toggle-autosync(){
-    TEMP=$($EPICCONF --toggle-autosync "${1}" --dbfile $DBFILE)
+    TEMP=$($EPICCONF --toggle-autosync "${1}" --dbfile "$DBFILE")
     echo "$TEMP"
 }
 function Epic_update-umu-id(){
-    TEMP=$($EPICCONF --update-umu-id "${1}" egs --dbfile $DBFILE)
+    TEMP=$($EPICCONF --update-umu-id "${1}" egs --dbfile "$DBFILE")
     echo "{\"Type\": \"Success\", \"Content\": {\"Message\": \"Umu Id updated\"}}"
 }   
 function Epic_install(){
     PROGRESS_LOG="${DECKY_PLUGIN_LOG_DIR}/${1}.progress"
     rm $PROGRESS_LOG &>> ${DECKY_PLUGIN_LOG_DIR}/${1}.log
-    RESULT=$($EPICCONF --addsteamclientid "${1}" "${2}" --dbfile $DBFILE)
-    TEMP=$($EPICCONF --update-umu-id "${1}" egs --dbfile $DBFILE)
+    RESULT=$($EPICCONF --addsteamclientid "${1}" "${2}" --dbfile "$DBFILE")
+    TEMP=$($EPICCONF --update-umu-id "${1}" egs --dbfile "$DBFILE")
     mkdir -p "${HOME}/Games/epic/"
     ARGS=$($ARGS_SCRIPT "${1}")
-    TEMP=$($EPICCONF --launchoptions "${1}" "${ARGS}" "" --dbfile $DBFILE $OFFLINE_MODE)
-    echo $TEMP
+    TEMP=$($EPICCONF --launchoptions "${1}" "${ARGS}" "" --dbfile "$DBFILE" $OFFLINE_MODE)
+    echo "$TEMP"
     exit 0
 }
 
 function Epic_getlaunchoptions(){
     ARGS=$($ARGS_SCRIPT "${1}")
-    TEMP=$($EPICCONF --launchoptions "${1}" "${ARGS}" "" --dbfile $DBFILE $OFFLINE_MODE)
-    echo $TEMP
+    TEMP=$($EPICCONF --launchoptions "${1}" "${ARGS}" "" --dbfile "$DBFILE" $OFFLINE_MODE)
+    echo "$TEMP"
     exit 0
 }
 
@@ -228,39 +228,39 @@ function Epic_uninstall(){
     
     #echo "Working dir is ${WORKING_DIR}"
     rm "${WORKING_DIR}/install.done"
-    TEMP=$($EPICCONF --clearsteamclientid "${1}" --dbfile $DBFILE)
-    echo $TEMP
-    
+    TEMP=$($EPICCONF --clearsteamclientid "${1}" --dbfile "$DBFILE")
+    echo "$TEMP"
+
 }
 function Epic_getgamedetails(){
     IMAGE_PATH=""
-    TEMP=$($EPICCONF --getgamedata "${1}" "${IMAGE_PATH}" --dbfile $DBFILE --forkname "Proton" --version "null" --platform "Windows")
-    echo $TEMP
+    TEMP=$($EPICCONF --getgamedata "${1}" "${IMAGE_PATH}" --dbfile "$DBFILE" --forkname "Proton" --version "null" --platform "Windows")
+    echo "$TEMP"
     exit 0
 }
 
 function Epic_checkupdate(){
-    TEMP=$($EPICCONF --hasupdates "${1}" --dbfile $DBFILE $OFFLINE_MODE)
-    echo $TEMP
+    TEMP=$($EPICCONF --hasupdates "${1}" --dbfile "$DBFILE" $OFFLINE_MODE)
+    echo "$TEMP"
 }
 function Epic_getgamesize(){
-    TEMP=$($EPICCONF --get-game-size "${1}" "${2}"  --dbfile $DBFILE)
-    echo $TEMP
+    TEMP=$($EPICCONF --get-game-size "${1}" "${2}"  --dbfile "$DBFILE")
+    echo "$TEMP"
 }
 
 function Epic_getprogress()
 {
-    TEMP=$($EPICCONF --getprogress "${DECKY_PLUGIN_LOG_DIR}/${1}.progress" --dbfile $DBFILE)
-    echo $TEMP
+    TEMP=$($EPICCONF --getprogress "${DECKY_PLUGIN_LOG_DIR}/${1}.progress" --dbfile "$DBFILE")
+    echo "$TEMP"
 }
 function Epic_loginstatus(){
     if [[ -z $1 ]]; then
         FLUSH_CACHE=""
-    else 
+    else
         FLUSH_CACHE="--flush-cache"
     fi
-    TEMP=$($EPICCONF --getloginstatus --dbfile $DBFILE --dbfile $DBFILE $OFFLINE_MODE  $FLUSH_CACHE)
-    echo $TEMP
+    TEMP=$($EPICCONF --getloginstatus --dbfile "$DBFILE" --dbfile "$DBFILE" $OFFLINE_MODE  $FLUSH_CACHE)
+    echo "$TEMP"
 
 }
 
@@ -278,7 +278,7 @@ function Epic_disable-eos-overlay(){
 
 function Epic_run-exe(){
     get_steam_env  
-    SETTINGS=$($EPICCONF --get-env-settings $ID --dbfile $DBFILE)
+    SETTINGS=$($EPICCONF --get-env-settings $ID --dbfile "$DBFILE")
     eval "${SETTINGS}"
     STEAM_ID="${1}"
     GAME_SHORTNAME="${2}"
@@ -290,14 +290,14 @@ function Epic_run-exe(){
         ARGS=""
     fi
     COMPAT_TOOL="${5}"
-    GAME_PATH=$($EPICCONF --get-game-dir $GAME_SHORTNAME --dbfile $DBFILE --offline)
+    GAME_PATH=$($EPICCONF --get-game-dir "$GAME_SHORTNAME" --dbfile "$DBFILE" --offline)
     launchoptions "\\\"${GAME_PATH}/${GAME_EXE}\\\""  "${ARGS}  &> ${DECKY_PLUGIN_LOG_DIR}/run-exe.log" "${GAME_PATH}" "Run exe" true "${COMPAT_TOOL}"
 }
 function Epic_get-exe-list(){
     get_steam_env
     STEAM_ID="${1}"
     GAME_SHORTNAME="${2}"
-    GAME_PATH=$($EPICCONF --get-game-dir $GAME_SHORTNAME --dbfile $DBFILE --offline)
+    GAME_PATH=$($EPICCONF --get-game-dir "$GAME_SHORTNAME" --dbfile "$DBFILE" --offline)
     export STEAM_COMPAT_DATA_PATH="${HOME}/.local/share/Steam/steamapps/compatdata/${STEAM_ID}"
     export STEAM_COMPAT_CLIENT_INSTALL_PATH="${GAME_PATH}"
     cd "${STEAM_COMPAT_CLIENT_INSTALL_PATH}"
@@ -372,16 +372,16 @@ function Epic_logout(){
 }
 
 function Epic_getsetting(){
-    TEMP=$($EPICCONF --getsetting $1 --dbfile $DBFILE)
-    echo $TEMP
+    TEMP=$($EPICCONF --getsetting "$1" --dbfile "$DBFILE")
+    echo "$TEMP"
 }
 function Epic_savesetting(){
-    $EPICCONF --savesetting $1 $2 --dbfile $DBFILE
+    $EPICCONF --savesetting "$1" "$2" --dbfile "$DBFILE"
 }   
 function Epic_getjsonimages(){
     
-    TEMP=$($EPICCONF --get-base64-images "${1}" --dbfile $DBFILE --offline)
-    echo $TEMP
+    TEMP=$($EPICCONF --get-base64-images "${1}" --dbfile "$DBFILE" --offline)
+    echo "$TEMP"
 }
 function Epic_gettabconfig(){
 # Check if conf_schemas directory exists, create it if not
@@ -427,5 +427,5 @@ function updategamedetailsaftercmd() {
     game=$1
     shift
     "$@"
-    $EPICCONF --update-game-details $game --dbfile $DBFILE &> /dev/null
+    $EPICCONF --update-game-details "$game" --dbfile "$DBFILE" &> /dev/null
 }

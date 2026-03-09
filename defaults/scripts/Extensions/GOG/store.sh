@@ -15,10 +15,10 @@ fi
 function GOG_init() {
     echo "[GOG_init] Starting. Checking .conf files in ${INSTALL_DIR} BEFORE list/retrodetect:" >> "${DECKY_PLUGIN_LOG_DIR}/detection.log" 2>&1
     find "${INSTALL_DIR}" -maxdepth 2 -name "*.conf" >> "${DECKY_PLUGIN_LOG_DIR}/detection.log" 2>&1 || echo "[GOG_init] No .conf files found" >> "${DECKY_PLUGIN_LOG_DIR}/detection.log" 2>&1
-    $GOGCONF --list --dbfile $DBFILE >> "${DECKY_PLUGIN_LOG_DIR}/detection.log" 2>&1
+    $GOGCONF --list --dbfile "$DBFILE" >> "${DECKY_PLUGIN_LOG_DIR}/detection.log" 2>&1
     echo "[GOG_init] After --list. Checking .conf files:" >> "${DECKY_PLUGIN_LOG_DIR}/detection.log" 2>&1
     find "${INSTALL_DIR}" -maxdepth 2 -name "*.conf" >> "${DECKY_PLUGIN_LOG_DIR}/detection.log" 2>&1 || echo "[GOG_init] No .conf files found" >> "${DECKY_PLUGIN_LOG_DIR}/detection.log" 2>&1
-    $GOGCONF --retrodetect --dbfile $DBFILE >> "${DECKY_PLUGIN_LOG_DIR}/detection.log" 2>&1
+    $GOGCONF --retrodetect --dbfile "$DBFILE" >> "${DECKY_PLUGIN_LOG_DIR}/detection.log" 2>&1
     echo "[GOG_init] After --retrodetect. Checking .conf files:" >> "${DECKY_PLUGIN_LOG_DIR}/detection.log" 2>&1
     find "${INSTALL_DIR}" -maxdepth 2 -name "*.conf" >> "${DECKY_PLUGIN_LOG_DIR}/detection.log" 2>&1 || echo "[GOG_init] No .conf files found" >> "${DECKY_PLUGIN_LOG_DIR}/detection.log" 2>&1
 }
@@ -44,28 +44,32 @@ function GOG_getgames(){
         LIMIT="${3}"
     fi
     IMAGE_PATH=""
-    TEMP=$($GOGCONF --getgameswithimages "${IMAGE_PATH}" "${FILTER}" "${INSTALLED}" "${LIMIT}" "true" --dbfile $DBFILE)
-    echo $TEMP >> $DECKY_PLUGIN_LOG_DIR/debug.log
+    TEMP=$($GOGCONF --getgameswithimages "${IMAGE_PATH}" "${FILTER}" "${INSTALLED}" "${LIMIT}" "true" --dbfile "$DBFILE")
+    echo "$TEMP" >> $DECKY_PLUGIN_LOG_DIR/debug.log
     if echo "$TEMP" | jq -e '.Content.Games | length == 0' &>/dev/null; then
         if [[ $FILTER == "" ]] && [[ $INSTALLED == "false" ]]; then
             TEMP=$(GOG_init)
-            TEMP=$($GOGCONF --getgameswithimages "${IMAGE_PATH}" "${FILTER}" "${INSTALLED}" "${LIMIT}" "true" --dbfile $DBFILE)
+            TEMP=$($GOGCONF --getgameswithimages "${IMAGE_PATH}" "${FILTER}" "${INSTALLED}" "${LIMIT}" "true" --dbfile "$DBFILE")
         fi
     fi
-    echo $TEMP
+    echo "$TEMP"
 }
 function GOG_saveplatformconfig(){
-    cat | $GOGCONF --parsejson "${1}" --dbfile $DBFILE --platform Proton --fork "" --version "" --dbfile $DBFILE
+    cat | $GOGCONF --parsejson "${1}" --dbfile "$DBFILE" --platform Proton --fork "" --version "" --dbfile "$DBFILE"
 }
 function GOG_getplatformconfig(){
-    TEMP=$($GOGCONF --confjson "${1}" --platform Proton --fork "" --version "" --dbfile $DBFILE)
-    echo $TEMP
+    TEMP=$($GOGCONF --confjson "${1}" --platform Proton --fork "" --version "" --dbfile "$DBFILE")
+    echo "$TEMP"
 }
 
 function GOG_cancelinstall(){
-    PID=$(cat "${DECKY_PLUGIN_LOG_DIR}/${1}.pid")
+    PID=$(cat "${DECKY_PLUGIN_LOG_DIR}/${1}.pid" 2>/dev/null)
     PROGRESS_LOG="${DECKY_PLUGIN_LOG_DIR}/${1}.progress"
-    killall -w gogdl
+    if [[ -n "${PID}" ]]; then
+        kill "${PID}" 2>/dev/null
+        sleep 2
+        kill -9 "${PID}" 2>/dev/null
+    fi
     rm "${DECKY_PLUGIN_LOG_DIR}/${1}.pid" 2>/dev/null
     echo "{\"Type\": \"Success\", \"Content\": {\"Message\": \"${1} installation Cancelled\"}}"
 }
@@ -111,8 +115,8 @@ function GOG_install(){
 
     # Find and process goggame-{id}.info to extract exe path
     INFO_FILENAME="goggame-${1}.info"
-    pushd "${INSTALL_DIR}" &>> ${INSTALL_LOG}
-    GAME_INFO=$(find . -type f -name $INFO_FILENAME)
+    pushd "${INSTALL_DIR}" &>> ${INSTALL_LOG} || { echo "[GOG_install] ERROR: Cannot cd to ${INSTALL_DIR}" >> ${INSTALL_LOG}; return 1; }
+    GAME_INFO=$(find . -type f -name "$INFO_FILENAME" -print -quit)
     echo "[GOG_install] INSTALL_DIR=${INSTALL_DIR}" >> ${INSTALL_LOG} 2>&1
     echo "[GOG_install] Looking for ${INFO_FILENAME}, found: '${GAME_INFO}'" >> ${INSTALL_LOG} 2>&1
     echo "Game info: ${GAME_INFO}" >> /dev/stderr
@@ -129,7 +133,7 @@ function GOG_install(){
 
     if [[ -n "${GAME_INFO}" ]]; then
         echo "[GOG_install] Processing info file: ${GAME_INFO}" >> ${INSTALL_LOG} 2>&1
-        $GOGCONF --process-info-file "${GAME_INFO}" --dbfile $DBFILE 2>> ${INSTALL_LOG}
+        $GOGCONF --process-info-file "${GAME_INFO}" --dbfile "$DBFILE" 2>> ${INSTALL_LOG}
 
         pushd "${INSTALL_DIR}" &>> ${INSTALL_LOG}
         echo "[GOG_install] CHECKPOINT B (after process-info): .conf files:" >> ${INSTALL_LOG} 2>&1
@@ -140,7 +144,7 @@ function GOG_install(){
     fi
 
     echo "[GOG_install] Adding steam client ID: game=${1} shortcut=${2}" >> ${INSTALL_LOG} 2>&1
-    RESULT=$($GOGCONF --addsteamclientid "${1}" "${2}" --dbfile $DBFILE)
+    RESULT=$($GOGCONF --addsteamclientid "${1}" "${2}" --dbfile "$DBFILE")
     echo "[GOG_install] addsteamclientid result: ${RESULT}" >> ${INSTALL_LOG} 2>&1
 
     if [[ -n "${GAME_SUBDIR}" ]]; then
@@ -150,14 +154,14 @@ function GOG_install(){
         popd &>> ${INSTALL_LOG}
     fi
 
-    TEMP=$($GOGCONF --update-umu-id "${1}" gog --dbfile $DBFILE)
+    TEMP=$($GOGCONF --update-umu-id "${1}" gog --dbfile "$DBFILE")
     echo "[GOG_install] update-umu-id result: ${TEMP}" >> ${INSTALL_LOG} 2>&1
 
     ARGS=$($ARGS_SCRIPT "${1}")
     echo "[GOG_install] ARGS_SCRIPT returned: ${ARGS}" >> ${INSTALL_LOG} 2>&1
 
     echo "[GOG_install] Requesting launch options for game=${1}" >> ${INSTALL_LOG} 2>&1
-    TEMP=$($GOGCONF --launchoptions "${1}" "${ARGS}" "" --dbfile $DBFILE 2>> ${INSTALL_LOG})
+    TEMP=$($GOGCONF --launchoptions "${1}" "${ARGS}" "" --dbfile "$DBFILE" 2>> ${INSTALL_LOG})
     echo "[GOG_install] Launch options result: ${TEMP}" >> ${INSTALL_LOG} 2>&1
 
     if [[ -n "${GAME_SUBDIR}" ]]; then
@@ -167,19 +171,19 @@ function GOG_install(){
         popd &>> ${INSTALL_LOG}
     fi
 
-    echo $TEMP
+    echo "$TEMP"
     exit 0
 }
 
 function GOG_getlaunchoptions(){
     ARGS=$($ARGS_SCRIPT "${1}")
-    TEMP=$($GOGCONF --launchoptions "${1}" "${ARGS}" "" --dbfile $DBFILE)
-    echo $TEMP
+    TEMP=$($GOGCONF --launchoptions "${1}" "${ARGS}" "" --dbfile "$DBFILE")
+    echo "$TEMP"
     exit 0
 }
 
 function GOG_uninstall(){
-    GAME_DIR=$($GOGCONF --get-game-dir "${1}" --dbfile $DBFILE)
+    GAME_DIR=$($GOGCONF --get-game-dir "${1}" --dbfile "$DBFILE")
     if [ -d "${GAME_DIR}" ]; then
         rm -rf "${GAME_DIR}"
     fi
@@ -188,30 +192,30 @@ function GOG_uninstall(){
     if [ -f "${GOGDL_MANIFEST}" ]; then
         rm -f "${GOGDL_MANIFEST}"
     fi
-    TEMP=$($GOGCONF --clearsteamclientid "${1}" --dbfile $DBFILE)
-    echo $TEMP
+    TEMP=$($GOGCONF --clearsteamclientid "${1}" --dbfile "$DBFILE")
+    echo "$TEMP"
 
 }
 function GOG_getgamedetails(){
     IMAGE_PATH=""
-    TEMP=$($GOGCONF --getgamedata "${1}" "${IMAGE_PATH}" --dbfile $DBFILE --forkname "Proton" --version "null" --platform "Windows")
-    echo $TEMP
+    TEMP=$($GOGCONF --getgamedata "${1}" "${IMAGE_PATH}" --dbfile "$DBFILE" --forkname "Proton" --version "null" --platform "Windows")
+    echo "$TEMP"
     exit 0
 }
 
 function GOG_checkupdate(){
-    TEMP=$($GOGCONF --has-updates "${1}" --dbfile $DBFILE)
-    echo $TEMP
+    TEMP=$($GOGCONF --has-updates "${1}" --dbfile "$DBFILE")
+    echo "$TEMP"
 }
 function GOG_getgamesize(){
-    TEMP=$($GOGCONF --get-game-size "${1}" "${2}"  --dbfile $DBFILE)
-    echo $TEMP
+    TEMP=$($GOGCONF --get-game-size "${1}" "${2}"  --dbfile "$DBFILE")
+    echo "$TEMP"
 }
 
 function GOG_getprogress()
 {
-    TEMP=$($GOGCONF --getprogress "${DECKY_PLUGIN_LOG_DIR}/${1}.progress" --dbfile $DBFILE)
-    echo $TEMP
+    TEMP=$($GOGCONF --getprogress "${DECKY_PLUGIN_LOG_DIR}/${1}.progress" --dbfile "$DBFILE")
+    echo "$TEMP"
 }
 function GOG_loginstatus(){
     if [[ -z $1 ]]; then
@@ -219,8 +223,8 @@ function GOG_loginstatus(){
     else
         FLUSH_CACHE="--flush-cache"
     fi
-    TEMP=$($GOGCONF --getloginstatus --dbfile $DBFILE $FLUSH_CACHE)
-    echo $TEMP
+    TEMP=$($GOGCONF --getloginstatus --dbfile "$DBFILE" $FLUSH_CACHE)
+    echo "$TEMP"
 
 }
 
@@ -241,11 +245,11 @@ function GOG_logout(){
 }
 
 function GOG_toggle-autosync(){
-    TEMP=$($GOGCONF --toggle-autosync "${1}" --dbfile $DBFILE)
+    TEMP=$($GOGCONF --toggle-autosync "${1}" --dbfile "$DBFILE")
     echo "$TEMP"
 }
 function GOG_update-umu-id(){
-    TEMP=$($GOGCONF --update-umu-id "${1}" gog --dbfile $DBFILE)
+    TEMP=$($GOGCONF --update-umu-id "${1}" gog --dbfile "$DBFILE")
     echo "{\"Type\": \"Success\", \"Content\": {\"Message\": \"Umu Id updated\"}}"
 }
 
@@ -257,7 +261,7 @@ function GOG_download-saves(){
         return
     fi
     pushd "${DECKY_PLUGIN_DIR}" > /dev/null
-    $GOGCONF --sync-saves "${1}" --skip-upload --dbfile $DBFILE >> "${DECKY_PLUGIN_LOG_DIR}/${1}.log" 2>> $PROGRESS_LOG &
+    $GOGCONF --sync-saves "${1}" --skip-upload --dbfile "$DBFILE" >> "${DECKY_PLUGIN_LOG_DIR}/${1}.log" 2>> $PROGRESS_LOG &
     echo $! > "${DECKY_PLUGIN_LOG_DIR}/${1}.pid"
     popd > /dev/null
     echo '{"Type": "Progress", "Content": {"Message": "Downloading Saves"}}'
@@ -271,7 +275,7 @@ function GOG_upload-saves(){
         return
     fi
     pushd "${DECKY_PLUGIN_DIR}" > /dev/null
-    $GOGCONF --sync-saves "${1}" --skip-download --dbfile $DBFILE >> "${DECKY_PLUGIN_LOG_DIR}/${1}.log" 2>> $PROGRESS_LOG &
+    $GOGCONF --sync-saves "${1}" --skip-download --dbfile "$DBFILE" >> "${DECKY_PLUGIN_LOG_DIR}/${1}.log" 2>> $PROGRESS_LOG &
     echo $! > "${DECKY_PLUGIN_LOG_DIR}/${1}.pid"
     popd > /dev/null
     echo '{"Type": "Progress", "Content": {"Message": "Uploading Saves"}}'
@@ -279,7 +283,7 @@ function GOG_upload-saves(){
 
 function GOG_run-exe(){
     get_steam_env
-    SETTINGS=$($GOGCONF --get-env-settings $ID --dbfile $DBFILE)
+    SETTINGS=$($GOGCONF --get-env-settings "$ID" --dbfile "$DBFILE")
     eval "${SETTINGS}"
     STEAM_ID="${1}"
     GAME_SHORTNAME="${2}"
@@ -291,14 +295,14 @@ function GOG_run-exe(){
         ARGS=""
     fi
     COMPAT_TOOL="${5}"
-    GAME_PATH=$($GOGCONF --get-game-dir $GAME_SHORTNAME --dbfile $DBFILE)
+    GAME_PATH=$($GOGCONF --get-game-dir "$GAME_SHORTNAME" --dbfile "$DBFILE")
     launchoptions "\\\"${GAME_PATH}/${GAME_EXE}\\\""  "${ARGS}  &> ${DECKY_PLUGIN_LOG_DIR}/run-exe.log" "${GAME_PATH}" "Run exe" true "${COMPAT_TOOL}"
 }
 function GOG_get-exe-list(){
     get_steam_env
     STEAM_ID="${1}"
     GAME_SHORTNAME="${2}"
-    GAME_PATH=$($GOGCONF --get-game-dir $GAME_SHORTNAME --dbfile $DBFILE)
+    GAME_PATH=$($GOGCONF --get-game-dir "$GAME_SHORTNAME" --dbfile "$DBFILE")
     export STEAM_COMPAT_DATA_PATH="${HOME}/.local/share/Steam/steamapps/compatdata/${STEAM_ID}"
     export STEAM_COMPAT_CLIENT_INSTALL_PATH="${GAME_PATH}"
     cd "${STEAM_COMPAT_CLIENT_INSTALL_PATH}"
@@ -315,16 +319,16 @@ function GOG_get-exe-list(){
 }
 
 function GOG_getsetting(){
-    TEMP=$($GOGCONF --getsetting $1 --dbfile $DBFILE)
-    echo $TEMP
+    TEMP=$($GOGCONF --getsetting "$1" --dbfile "$DBFILE")
+    echo "$TEMP"
 }
 function GOG_savesetting(){
-    $GOGCONF --savesetting $1 $2 --dbfile $DBFILE
+    $GOGCONF --savesetting "$1" "$2" --dbfile "$DBFILE"
 }
 function GOG_getjsonimages(){
 
-    TEMP=$($GOGCONF --get-base64-images "${1}" --dbfile $DBFILE --offline)
-    echo $TEMP
+    TEMP=$($GOGCONF --get-base64-images "${1}" --dbfile "$DBFILE" --offline)
+    echo "$TEMP"
 }
 function GOG_gettabconfig(){
     if [[ ! -d "${DECKY_PLUGIN_RUNTIME_DIR}/conf_schemas" ]]; then
@@ -366,7 +370,7 @@ function GOG_apply-protonfixes(){
 }
 
 function GOG_retrodetect-game-types(){
-    $GOGCONF --retrodetect --dbfile $DBFILE >> "${DECKY_PLUGIN_LOG_DIR}/detection.log" 2>&1
+    $GOGCONF --retrodetect --dbfile "$DBFILE" >> "${DECKY_PLUGIN_LOG_DIR}/detection.log" 2>&1
     echo "{\"Type\": \"Success\", \"Content\": {\"Message\": \"Game types retrodetected\"}}"
 }
 
@@ -378,7 +382,7 @@ function gogupdategamedetailsaftercmd() {
     # gogdl puts support files (DOSBox confs, etc.) in gog-support/<id>/app/
     # instead of the game root. Copy them into the game directory so they're
     # where the goggame info file expects them.
-    GAME_DIR=$($GOGCONF --get-game-dir "$game" --dbfile $DBFILE 2>/dev/null)
+    GAME_DIR=$($GOGCONF --get-game-dir "$game" --dbfile "$DBFILE" 2>/dev/null)
     if [[ -z "${GAME_DIR}" ]]; then
         # Fallback: find the game folder via the goggame info file
         INFO_FILE=$(find "${INSTALL_DIR}" -maxdepth 2 -name "goggame-${game}.info" -print -quit 2>/dev/null)
@@ -392,11 +396,11 @@ function gogupdategamedetailsaftercmd() {
         echo "[post-download] Found gog-support dir: ${SUPPORT_DIR}" >> "${DECKY_PLUGIN_LOG_DIR}/${game}.log" 2>&1
         echo "[post-download] Contents:" >> "${DECKY_PLUGIN_LOG_DIR}/${game}.log" 2>&1
         ls -la "${SUPPORT_DIR}/" >> "${DECKY_PLUGIN_LOG_DIR}/${game}.log" 2>&1
-        cp -n "${SUPPORT_DIR}/"* "${GAME_DIR}/" >> "${DECKY_PLUGIN_LOG_DIR}/${game}.log" 2>&1
+        cp -rn "${SUPPORT_DIR}/"* "${GAME_DIR}/" >> "${DECKY_PLUGIN_LOG_DIR}/${game}.log" 2>&1
         echo "[post-download] Copied support files to ${GAME_DIR}/" >> "${DECKY_PLUGIN_LOG_DIR}/${game}.log" 2>&1
     else
         echo "[post-download] No gog-support dir at ${SUPPORT_DIR}" >> "${DECKY_PLUGIN_LOG_DIR}/${game}.log" 2>&1
     fi
 
-    $GOGCONF --update-game-details $game --dbfile $DBFILE >> "${DECKY_PLUGIN_LOG_DIR}/${game}.log" 2>&1
+    "$GOGCONF" --update-game-details "$game" --dbfile "$DBFILE" >> "${DECKY_PLUGIN_LOG_DIR}/${game}.log" 2>&1
 }

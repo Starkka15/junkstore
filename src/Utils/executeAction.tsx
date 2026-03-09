@@ -2,9 +2,7 @@ import { ServerAPI, ToastData, showModal } from "decky-frontend-lib";
 import { ContentError, ContentResult, ContentType, ExecuteArgs, LaunchOptions, SuccessContent } from "../Types/Types";
 import Logger from "./logger";
 import { ErrorModal } from "../ErrorModal";
-import { runApp } from "./utils";
-import { configureShortcut } from './utils';
-import { getAppDetails } from './utils';
+import { runApp, configureShortcut, getAppDetails, gameIDFromAppID } from './utils';
 
 //* this is where you will be assuming the type of content and if the case is amibigous you can use type unions and deal with each possiblitiy outside the function
 export async function executeAction<Arguments extends ExecuteArgs, Content extends ContentType>(serverAPI: ServerAPI, actionSet: string, actionName: string, args: Arguments, onExeExit?: () => void): Promise<ContentResult<Content> | null> {
@@ -30,8 +28,11 @@ export async function executeAction<Arguments extends ExecuteArgs, Content exten
     if (res.result.Type === 'RunExe') {
         const newLaunchOptions = res.result.Content as LaunchOptions;
         if (args.appId) {
-            const id = parseInt(args.appId);
-            //await appDetailsStore.RequestAppDetails(id);
+            const id = parseInt(args.appId, 10);
+            if (Number.isNaN(id)) {
+                logger.error("Invalid appId:", args.appId);
+                return null;
+            }
             const details = await getAppDetails(id);
             logger.log("details: ", details);
             const oldLaunchOptions: LaunchOptions = {
@@ -43,10 +44,24 @@ export async function executeAction<Arguments extends ExecuteArgs, Content exten
                 Compatibility: !!details?.strCompatToolName
             };
             configureShortcut(id, newLaunchOptions);
-            runApp(id, onExeExit, () => configureShortcut(id, oldLaunchOptions));
+            const gid = gameIDFromAppID(id);
+            if (!gid || gid === -1) {
+                logger.error("Failed to get gameID for appId, restoring shortcut:", id);
+                configureShortcut(id, oldLaunchOptions);
+            } else {
+                // Fallback: restore shortcut if app never starts within 30s
+                const restoreTimeout = setTimeout(() => {
+                    logger.error("App never started within 30s, restoring shortcut:", id);
+                    configureShortcut(id, oldLaunchOptions);
+                }, 30000);
+                runApp(id, onExeExit, () => {
+                    clearTimeout(restoreTimeout);
+                    configureShortcut(id, oldLaunchOptions);
+                });
+            }
         }
 
-        return null; //* does caller need to be able to distinguish this case or not
+        return null;
     }
 
     if (res.result.Type === 'Success') {

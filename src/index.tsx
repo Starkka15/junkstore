@@ -24,21 +24,15 @@ export default definePlugin((serverApi: ServerAPI) => {
 
 
   toastFactory(serverApi.toaster);
-  let selectPressed = false;
-  let startPressed = false;
   let l3Pressed = false;
   let r3Pressed = false;
+  let modalDebounce = false;
+  const doubleStickEnabled = localStorage.getItem('gv_doubleStick') === 'true';
 
   const unregister = SteamClient.Input.RegisterForControllerInputMessages(
     (e) => {
       if (Array.isArray(e)) {
         if (e[0]) {
-          if (e[0].nA == 35) {
-            selectPressed = e[0].bS;
-          }
-          if (e[0].nA == 36) {
-            startPressed = e[0].bS;
-          }
           if (e[0].nA == 25) {
             l3Pressed = e[0].bS;
           }
@@ -48,10 +42,11 @@ export default definePlugin((serverApi: ServerAPI) => {
         }
       }
 
-      if (l3Pressed && r3Pressed && localStorage.getItem('gv_doubleStick') === 'true') {
+      if (l3Pressed && r3Pressed && doubleStickEnabled && !modalDebounce) {
+        modalDebounce = true;
         Navigation.CloseSideMenus();
         showModal(<MainMenuModal serverApi={serverApi} />);
-
+        setTimeout(() => { modalDebounce = false; }, 1000);
       }
     })
 
@@ -113,6 +108,7 @@ export default definePlugin((serverApi: ServerAPI) => {
       serverApi.routerHook.removeRoute("/about-gamevault");
       serverApi.routerHook.removeRoute("/gamevault-downloads");
       unregister.unregister();
+      installQueue.clear();
     },
   };
 });

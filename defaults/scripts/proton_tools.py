@@ -121,6 +121,12 @@ def install_ge_proton():
 
     try:
         with tarfile.open(tmp_file, "r:gz") as tar:
+            # Validate all paths before extraction (path traversal check)
+            real_compat = os.path.realpath(compat_dir)
+            for member in tar.getmembers():
+                member_path = os.path.realpath(os.path.join(compat_dir, member.name))
+                if not member_path.startswith(real_compat + os.sep) and member_path != real_compat:
+                    raise Exception(f"Path traversal detected in tar: {member.name}")
             tar.extractall(path=compat_dir)
     except Exception as e:
         print(f"Error extracting: {e}")

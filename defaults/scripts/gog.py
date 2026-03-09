@@ -28,10 +28,17 @@ class GOG(GamesDb.GamesDb):
     gogdl_cmd = os.environ.get('GOGDL', '/bin/flatpak run com.github.heroic_games_launcher.heroic-gogdl')
     auth_tokens = os.environ.get('AUTH_TOKENS', os.path.expanduser('~/homebrew/data/GameVault/gog_auth.json'))
 
-    def execute_shell(self, cmd):
-        result = subprocess.Popen(cmd, stdout=subprocess.PIPE, stdin=subprocess.PIPE,
+    def execute_shell(self, cmd, timeout=120):
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stdin=subprocess.PIPE,
                                   stderr=subprocess.PIPE,
-                                  shell=True).communicate()[0].decode()
+                                  shell=True)
+        try:
+            stdout, stderr = proc.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.communicate()
+            raise CmdException(f"Command timed out after {timeout}s: {cmd}")
+        result = stdout.decode()
 
         if result.strip() == "":
             raise CmdException(f"Command produced no output (try installing dependencies from the About menu): {cmd}")
@@ -282,12 +289,21 @@ class GOG(GamesDb.GamesDb):
                     targets_result = subprocess.run(targets_cmd, capture_output=True, text=True, timeout=15, env=cli_env)
                     print(f"[ScummVM detect] --list-targets returncode: {targets_result.returncode}", file=sys.stderr)
                     print(f"[ScummVM detect] --list-targets stdout: {targets_result.stdout.strip()!r}", file=sys.stderr)
+                    matched_target = None
                     for line in targets_result.stdout.splitlines():
                         line = line.strip()
                         if line and not line.startswith('Target') and not line.startswith('---'):
                             target_id = line.split()[0]
-                            print(f"[ScummVM detect] SUCCESS: found existing target={target_id}", file=sys.stderr)
-                            return target_id
+                            # Match target against detected game_id (e.g. game_id="stark:tlj" matches target containing "tlj")
+                            game_short = game_id.split(':')[-1] if ':' in game_id else game_id
+                            if game_short in target_id or game_id in target_id:
+                                print(f"[ScummVM detect] SUCCESS: matched target={target_id} for game_id={game_id}", file=sys.stderr)
+                                return target_id
+                            if matched_target is None:
+                                matched_target = target_id  # Keep first as fallback
+                    if matched_target:
+                        print(f"[ScummVM detect] WARNING: no exact match, using first target={matched_target}", file=sys.stderr)
+                        return matched_target
                     print(f"[ScummVM detect] FAIL: no matching target found in --list-targets", file=sys.stderr)
                 else:
                     print(f"[ScummVM detect] FAIL: --detect returned no game_id", file=sys.stderr)
@@ -307,17 +323,25 @@ class GOG(GamesDb.GamesDb):
         print(f"Processing info file: {file_path}", file=sys.stderr)
         conn = self.get_connection()
         c = conn.cursor()
-        file_path = os.path.realpath(os.path.join(os.environ['INSTALL_DIR'], file_path))
+        install_dir = os.environ.get('INSTALL_DIR', os.path.expanduser('~/Games/gog/'))
+        file_path = os.path.realpath(os.path.join(install_dir, file_path))
         print(f"File path: {file_path}", file=sys.stderr)
         with open(file_path, 'r') as f:
             data = json.load(f)
             exe_file = ""
             args = ""
             working_dir = ""
+
+            play_tasks = data.get('playTasks', [])
+            if not play_tasks:
+                print(f"[process_info] WARNING: No playTasks in info file (DLC or malformed?)", file=sys.stderr)
+                conn.close()
+                return
+
             # First pass: grab the primary/game task
-            for task in data['playTasks']:
+            for task in play_tasks:
                 if ('category' in task and task['category'] == 'game') or ('isPrimary' in task and task['isPrimary']):
-                    exe_file = task['path']
+                    exe_file = task.get('path', '')
                     if task.get('arguments'):
                         args = task['arguments']
                     if task.get('workingDir'):
@@ -330,8 +354,8 @@ class GOG(GamesDb.GamesDb):
             # If the primary task isn't DOSBox/ScummVM, scan all tasks —
             # GOG often sets a Windows wrapper as primary while bundling DOSBox
             if game_type == 'windows':
-                print(f"[process_info] Primary is windows, scanning {len(data['playTasks'])} playTasks for emulator tasks", file=sys.stderr)
-                for i, task in enumerate(data['playTasks']):
+                print(f"[process_info] Primary is windows, scanning {len(play_tasks)} playTasks for emulator tasks", file=sys.stderr)
+                for i, task in enumerate(play_tasks):
                     task_path = task.get('path', '')
                     task_type = self.detect_game_type(task_path)
                     print(f"[process_info]   playTask[{i}]: path={task_path!r} type={task_type} category={task.get('category', 'none')} isPrimary={task.get('isPrimary', False)}", file=sys.stderr)
@@ -357,7 +381,11 @@ class GOG(GamesDb.GamesDb):
                     print(f"[process_info] ScummVM detection returned None — keeping type=windows", file=sys.stderr)
 
             print(f"[process_info] Final: exe={exe_file!r} root_dir={root_dir} game_type={game_type} args={args!r} working_dir={working_dir!r}", file=sys.stderr)
-            game_id = data['gameId']
+            game_id = data.get('gameId')
+            if not game_id:
+                print(f"[process_info] WARNING: No gameId in info file", file=sys.stderr)
+                conn.close()
+                return
 
             print(f"Game id: {game_id}", file=sys.stderr)
             c.execute("update Game set ApplicationPath = ?, RootFolder = ?, Arguments =?, WorkingDir =?, GameType =? where DatabaseID = ?", (exe_file, root_dir, args, working_dir, game_type, game_id))
@@ -636,11 +664,13 @@ class GOG(GamesDb.GamesDb):
 
         resolved = []
         remaining = raw_args
+        # Match -conf with double-quoted, single-quoted, or unquoted paths
+        conf_pattern = re.compile(r'-conf\s+(?:"([^"]+)"|\'([^\']+)\'|(\S+))')
         while True:
-            match = re.search(r'-conf\s+"([^"]+)"', remaining)
+            match = conf_pattern.search(remaining)
             if not match:
                 break
-            conf_rel = match.group(1).replace("\\", "/")
+            conf_rel = (match.group(1) or match.group(2) or match.group(3)).replace("\\", "/")
             conf_abs = os.path.normpath(os.path.join(base_dir, conf_rel))
             if not os.path.exists(conf_abs):
                 conf_abs_ci = GOG._find_case_insensitive(conf_abs)
@@ -654,6 +684,12 @@ class GOG(GamesDb.GamesDb):
         result = ' '.join(resolved)
         if not resolved:
             print(f"[dosbox_args] WARNING: No -conf flags found in raw_args={raw_args!r}", file=sys.stderr)
+            # Fallback: scan game directory for .conf files
+            if os.path.isdir(base_dir):
+                confs = [f for f in os.listdir(base_dir) if f.lower().endswith('.conf') and 'dosbox' in f.lower()]
+                if confs:
+                    result = ' '.join(f'-conf "{os.path.join(base_dir, c)}"' for c in sorted(confs))
+                    print(f"[dosbox_args] Fallback: found conf files in {base_dir}: {confs} -> {result}", file=sys.stderr)
         print(f"[dosbox_args] Final resolved args: {result!r}", file=sys.stderr)
         return result
 
@@ -912,14 +948,15 @@ class GOG(GamesDb.GamesDb):
 
     def sync_saves(self, game_id, skip_upload=False, skip_download=False):
         """Orchestrate gogdl save-sync for each save location."""
+        import shlex
         locations = self.get_save_paths(game_id)
         if not locations:
             print(f"No save locations found for game {game_id}", file=sys.stderr)
             return
 
         for loc in locations:
-            cmd = (f'{self.gogdl_cmd} --auth-config-path "{self.auth_tokens}" save-sync '
-                   f'"{loc["path"]}" {game_id} --os windows --ts 0 --name {loc["name"]}')
+            cmd = (f'{self.gogdl_cmd} --auth-config-path {shlex.quote(self.auth_tokens)} save-sync '
+                   f'{shlex.quote(loc["path"])} {shlex.quote(str(game_id))} --os windows --ts 0 --name {shlex.quote(loc["name"])}')
             if skip_upload:
                 cmd += ' --skip-upload'
             if skip_download:

@@ -13,7 +13,7 @@ if [[ "${PLATFORM}" == "Amazon" ]]; then
 fi
 
 function Amazon_init() {
-    $AMAZONCONF --list --dbfile $DBFILE &> /dev/null
+    $AMAZONCONF --list --dbfile "$DBFILE" &> /dev/null
 }
 
 function Amazon_refresh() {
@@ -37,22 +37,22 @@ function Amazon_getgames(){
         LIMIT="${3}"
     fi
     IMAGE_PATH=""
-    TEMP=$($AMAZONCONF --getgameswithimages "${IMAGE_PATH}" "${FILTER}" "${INSTALLED}" "${LIMIT}" "true" --dbfile $DBFILE)
-    echo $TEMP >> $DECKY_PLUGIN_LOG_DIR/debug.log
+    TEMP=$($AMAZONCONF --getgameswithimages "${IMAGE_PATH}" "${FILTER}" "${INSTALLED}" "${LIMIT}" "true" --dbfile "$DBFILE")
+    echo "$TEMP" >> $DECKY_PLUGIN_LOG_DIR/debug.log
     if echo "$TEMP" | jq -e '.Content.Games | length == 0' &>/dev/null; then
         if [[ $FILTER == "" ]] && [[ $INSTALLED == "false" ]]; then
             TEMP=$(Amazon_init)
-            TEMP=$($AMAZONCONF --getgameswithimages "${IMAGE_PATH}" "${FILTER}" "${INSTALLED}" "${LIMIT}" "true" --dbfile $DBFILE)
+            TEMP=$($AMAZONCONF --getgameswithimages "${IMAGE_PATH}" "${FILTER}" "${INSTALLED}" "${LIMIT}" "true" --dbfile "$DBFILE")
         fi
     fi
-    echo $TEMP
+    echo "$TEMP"
 }
 function Amazon_saveplatformconfig(){
-    cat | $AMAZONCONF --parsejson "${1}" --dbfile $DBFILE --platform Proton --fork "" --version "" --dbfile $DBFILE
+    cat | $AMAZONCONF --parsejson "${1}" --dbfile "$DBFILE" --platform Proton --fork "" --version "" --dbfile "$DBFILE"
 }
 function Amazon_getplatformconfig(){
-    TEMP=$($AMAZONCONF --confjson "${1}" --platform Proton --fork "" --version "" --dbfile $DBFILE)
-    echo $TEMP
+    TEMP=$($AMAZONCONF --confjson "${1}" --platform Proton --fork "" --version "" --dbfile "$DBFILE")
+    echo "$TEMP"
 }
 
 function Amazon_cancelinstall(){
@@ -82,7 +82,7 @@ function Amazon_update(){
 
 function Amazon_verify(){
     PROGRESS_LOG="${DECKY_PLUGIN_LOG_DIR}/${1}.progress"
-    GAME_DIR=$($AMAZONCONF --get-game-dir "${1}" --dbfile $DBFILE)
+    GAME_DIR=$($AMAZONCONF --get-game-dir "${1}" --dbfile "$DBFILE")
     $NILE verify --path "${GAME_DIR}" $1 >> "${DECKY_PLUGIN_LOG_DIR}/${1}.log" 2>> $PROGRESS_LOG &
     echo $! > "${DECKY_PLUGIN_LOG_DIR}/${1}.pid"
     echo "{\"Type\": \"Progress\", \"Content\": {\"Message\": \"Verifying\"}}"
@@ -90,7 +90,7 @@ function Amazon_verify(){
 }
 function Amazon_repair(){
     PROGRESS_LOG="${DECKY_PLUGIN_LOG_DIR}/${1}.progress"
-    GAME_DIR=$($AMAZONCONF --get-game-dir "${1}" --dbfile $DBFILE)
+    GAME_DIR=$($AMAZONCONF --get-game-dir "${1}" --dbfile "$DBFILE")
     amazonupdategamedetailsaftercmd $1 $NILE verify --path "${GAME_DIR}" $1 >> "${DECKY_PLUGIN_LOG_DIR}/${1}.log" 2>> $PROGRESS_LOG &
     echo $! > "${DECKY_PLUGIN_LOG_DIR}/${1}.pid"
     echo "{\"Type\": \"Progress\", \"Content\": {\"Message\": \"Repairing\"}}"
@@ -102,49 +102,49 @@ function Amazon_install(){
     rm $PROGRESS_LOG &>> ${DECKY_PLUGIN_LOG_DIR}/${1}.log
 
     # Process fuel.json to extract actual game exe path
-    $AMAZONCONF --process-fuel-json "${1}" --dbfile $DBFILE
+    $AMAZONCONF --process-fuel-json "${1}" --dbfile "$DBFILE"
 
-    RESULT=$($AMAZONCONF --addsteamclientid "${1}" "${2}" --dbfile $DBFILE)
-    TEMP=$($AMAZONCONF --update-umu-id "${1}" amazon --dbfile $DBFILE)
+    RESULT=$($AMAZONCONF --addsteamclientid "${1}" "${2}" --dbfile "$DBFILE")
+    TEMP=$($AMAZONCONF --update-umu-id "${1}" amazon --dbfile "$DBFILE")
     ARGS=$($ARGS_SCRIPT "${1}")
-    TEMP=$($AMAZONCONF --launchoptions "${1}" "${ARGS}" "" --dbfile $DBFILE)
-    echo $TEMP
+    TEMP=$($AMAZONCONF --launchoptions "${1}" "${ARGS}" "" --dbfile "$DBFILE")
+    echo "$TEMP"
     exit 0
 }
 
 function Amazon_getlaunchoptions(){
     ARGS=$($ARGS_SCRIPT "${1}")
-    TEMP=$($AMAZONCONF --launchoptions "${1}" "${ARGS}" "" --dbfile $DBFILE)
-    echo $TEMP
+    TEMP=$($AMAZONCONF --launchoptions "${1}" "${ARGS}" "" --dbfile "$DBFILE")
+    echo "$TEMP"
     exit 0
 }
 
 function Amazon_uninstall(){
     $NILE uninstall $1 &>> "${DECKY_PLUGIN_LOG_DIR}/${1}.log"
-    TEMP=$($AMAZONCONF --clearsteamclientid "${1}" --dbfile $DBFILE)
-    echo $TEMP
+    TEMP=$($AMAZONCONF --clearsteamclientid "${1}" --dbfile "$DBFILE")
+    echo "$TEMP"
 
 }
 function Amazon_getgamedetails(){
     IMAGE_PATH=""
-    TEMP=$($AMAZONCONF --getgamedata "${1}" "${IMAGE_PATH}" --dbfile $DBFILE --forkname "Proton" --version "null" --platform "Windows")
-    echo $TEMP
+    TEMP=$($AMAZONCONF --getgamedata "${1}" "${IMAGE_PATH}" --dbfile "$DBFILE" --forkname "Proton" --version "null" --platform "Windows")
+    echo "$TEMP"
     exit 0
 }
 
 function Amazon_checkupdate(){
-    TEMP=$($AMAZONCONF --has-updates "${1}" --dbfile $DBFILE)
-    echo $TEMP
+    TEMP=$($AMAZONCONF --has-updates "${1}" --dbfile "$DBFILE")
+    echo "$TEMP"
 }
 function Amazon_getgamesize(){
-    TEMP=$($AMAZONCONF --get-game-size "${1}" "${2}"  --dbfile $DBFILE)
-    echo $TEMP
+    TEMP=$($AMAZONCONF --get-game-size "${1}" "${2}"  --dbfile "$DBFILE")
+    echo "$TEMP"
 }
 
 function Amazon_getprogress()
 {
-    TEMP=$($AMAZONCONF --getprogress "${DECKY_PLUGIN_LOG_DIR}/${1}.progress" --dbfile $DBFILE)
-    echo $TEMP
+    TEMP=$($AMAZONCONF --getprogress "${DECKY_PLUGIN_LOG_DIR}/${1}.progress" --dbfile "$DBFILE")
+    echo "$TEMP"
 }
 function Amazon_loginstatus(){
     if [[ -z $1 ]]; then
@@ -152,8 +152,8 @@ function Amazon_loginstatus(){
     else
         FLUSH_CACHE="--flush-cache"
     fi
-    TEMP=$($AMAZONCONF --getloginstatus --dbfile $DBFILE $FLUSH_CACHE)
-    echo $TEMP
+    TEMP=$($AMAZONCONF --getloginstatus --dbfile "$DBFILE" $FLUSH_CACHE)
+    echo "$TEMP"
 
 }
 
@@ -175,13 +175,13 @@ function Amazon_logout(){
 }
 
 function Amazon_update-umu-id(){
-    TEMP=$($AMAZONCONF --update-umu-id "${1}" amazon --dbfile $DBFILE)
+    TEMP=$($AMAZONCONF --update-umu-id "${1}" amazon --dbfile "$DBFILE")
     echo "{\"Type\": \"Success\", \"Content\": {\"Message\": \"Umu Id updated\"}}"
 }
 
 function Amazon_run-exe(){
     get_steam_env
-    SETTINGS=$($AMAZONCONF --get-env-settings $ID --dbfile $DBFILE)
+    SETTINGS=$($AMAZONCONF --get-env-settings $ID --dbfile "$DBFILE")
     eval "${SETTINGS}"
     STEAM_ID="${1}"
     GAME_SHORTNAME="${2}"
@@ -193,14 +193,14 @@ function Amazon_run-exe(){
         ARGS=""
     fi
     COMPAT_TOOL="${5}"
-    GAME_PATH=$($AMAZONCONF --get-game-dir $GAME_SHORTNAME --dbfile $DBFILE)
+    GAME_PATH=$($AMAZONCONF --get-game-dir "$GAME_SHORTNAME" --dbfile "$DBFILE")
     launchoptions "\\\"${GAME_PATH}/${GAME_EXE}\\\""  "${ARGS}  &> ${DECKY_PLUGIN_LOG_DIR}/run-exe.log" "${GAME_PATH}" "Run exe" true "${COMPAT_TOOL}"
 }
 function Amazon_get-exe-list(){
     get_steam_env
     STEAM_ID="${1}"
     GAME_SHORTNAME="${2}"
-    GAME_PATH=$($AMAZONCONF --get-game-dir $GAME_SHORTNAME --dbfile $DBFILE)
+    GAME_PATH=$($AMAZONCONF --get-game-dir "$GAME_SHORTNAME" --dbfile "$DBFILE")
     export STEAM_COMPAT_DATA_PATH="${HOME}/.local/share/Steam/steamapps/compatdata/${STEAM_ID}"
     export STEAM_COMPAT_CLIENT_INSTALL_PATH="${GAME_PATH}"
     cd "${STEAM_COMPAT_CLIENT_INSTALL_PATH}"
@@ -217,16 +217,16 @@ function Amazon_get-exe-list(){
 }
 
 function Amazon_getsetting(){
-    TEMP=$($AMAZONCONF --getsetting $1 --dbfile $DBFILE)
-    echo $TEMP
+    TEMP=$($AMAZONCONF --getsetting "$1" --dbfile "$DBFILE")
+    echo "$TEMP"
 }
 function Amazon_savesetting(){
-    $AMAZONCONF --savesetting $1 $2 --dbfile $DBFILE
+    $AMAZONCONF --savesetting "$1" "$2" --dbfile "$DBFILE"
 }
 function Amazon_getjsonimages(){
 
-    TEMP=$($AMAZONCONF --get-base64-images "${1}" --dbfile $DBFILE --offline)
-    echo $TEMP
+    TEMP=$($AMAZONCONF --get-base64-images "${1}" --dbfile "$DBFILE" --offline)
+    echo "$TEMP"
 }
 function Amazon_gettabconfig(){
     if [[ ! -d "${DECKY_PLUGIN_RUNTIME_DIR}/conf_schemas" ]]; then
@@ -271,5 +271,5 @@ function amazonupdategamedetailsaftercmd() {
     game=$1
     shift
     "$@"
-    $AMAZONCONF --update-game-details $game --dbfile $DBFILE &> /dev/null
+    $AMAZONCONF --update-game-details "$game" --dbfile "$DBFILE" &> /dev/null
 }

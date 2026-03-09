@@ -32,6 +32,7 @@ class InstallQueue {
     private listeners: Set<QueueListener> = new Set();
     private serverAPI: ServerAPI | null = null;
     private cancelled = false;
+    private runGeneration = 0;
 
     constructor() {
         this.restoreState();
@@ -76,14 +77,22 @@ class InstallQueue {
         try {
             const stored = localStorage.getItem(STORAGE_KEY);
             if (!stored) return;
-            const items: QueueItem[] = JSON.parse(stored);
-            if (!Array.isArray(items) || items.length === 0) return;
+            const parsed = JSON.parse(stored);
+            if (!Array.isArray(parsed) || parsed.length === 0) return;
+            // Validate each item has required fields
+            const items: QueueItem[] = parsed.filter((i: any) =>
+                i && typeof i.shortname === "string" && typeof i.title === "string" &&
+                typeof i.initActionSet === "string" && typeof i.status === "string"
+            );
+            if (items.length === 0) return;
             // Mark any "downloading" or "installing" items as "queued" since we lost
             // track of them — reconnect() will check their actual status
             this.state.items = items.map(i => ({
                 ...i,
+                progress: typeof i.progress === "number" ? i.progress : 0,
+                description: typeof i.description === "string" ? i.description : "",
                 status: i.status === "downloading" || i.status === "installing" ? "queued" : i.status,
-                description: i.status === "downloading" || i.status === "installing" ? "Reconnecting..." : i.description,
+                ...(i.status === "downloading" || i.status === "installing" ? { description: "Reconnecting..." } : {}),
             }));
         } catch (e) {
             logger.error("Failed to restore queue state", e);
@@ -215,7 +224,7 @@ class InstallQueue {
     }
 
     getState(): QueueState {
-        return { ...this.state, items: [...this.state.items] };
+        return { ...this.state, items: this.state.items.map(i => ({ ...i })) };
     }
 
     getItemStatus(shortname: string): QueueItem | undefined {
@@ -243,13 +252,15 @@ class InstallQueue {
     async start() {
         if (!this.serverAPI || this.state.isProcessing) return;
         this.cancelled = false;
+        this.runGeneration++;
+        const myGeneration = this.runGeneration;
         this.state.isProcessing = true;
         this.notify();
 
         // Continuously drain the queue — new items added during processing
         // will be picked up automatically
         while (true) {
-            if (this.cancelled) break;
+            if (this.cancelled || myGeneration !== this.runGeneration) break;
             const nextItem = this.state.items.find(i => i.status === "queued");
             if (!nextItem) break;
             await this.processItem(nextItem);
@@ -365,7 +376,7 @@ class InstallQueue {
             // Get or create Steam shortcut
             let steamId: number;
             if (existingId && existingId !== "") {
-                steamId = parseInt(existingId);
+                steamId = parseInt(existingId, 10);
                 // @ts-ignore
                 const apps = appStore.allApps.filter(app => app.appid === steamId);
                 if (apps.length === 0) {
@@ -373,6 +384,12 @@ class InstallQueue {
                 }
             } else {
                 steamId = await SteamClient.Apps.AddShortcut("Name", "/bin/bash", "", "");
+            }
+            if (!steamId || steamId <= 0) {
+                item.status = "error";
+                item.description = "Failed to create Steam shortcut";
+                this.notify();
+                return;
             }
 
             // @ts-ignore

@@ -129,7 +129,7 @@ const GameDisplay: VFC<GameDisplayProperties> = (
 
                     if (show)
                         return <MenuItem onSelected={
-                            () => {
+                            async () => {
                                 const args = {
                                     shortname: shortName,
                                     steamClientID: "",
@@ -141,7 +141,7 @@ const GameDisplay: VFC<GameDisplayProperties> = (
                                 };
                                 if (isInstalled) {
                                     logger.debug("steamClientID: ", steamClientID, action);
-                                    const details = getAppDetails(steamClientID);
+                                    const details = await getAppDetails(steamClientID);
                                     if (details == null) {
                                         logger.error("details is null"); return;
                                     }
@@ -291,7 +291,7 @@ const GameDisplay: VFC<GameDisplayProperties> = (
                     <ScrollableWindow height='100%' onCancel={closeModal} {...focusableProps}>
                         <div
                             style={{ paddingRight: '10px', whiteSpace: 'pre-wrap' }}
-                            dangerouslySetInnerHTML={{ __html: description }}
+                            dangerouslySetInnerHTML={{ __html: sanitizeHtml(description) }}
                         />
                         {steamClientID && (<div style={{ marginTop: '20px' }}>
                             Steam Client ID: {steamClientID}
@@ -406,5 +406,13 @@ const FocusOnMount: FC<FocusableProps> = (props) => {
 
     return focusable;
 };
+
+function sanitizeHtml(html: string): string {
+    // Strip script tags, event handlers, and javascript: URLs
+    return html
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+        .replace(/\s+on\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]*)/gi, '')
+        .replace(/javascript\s*:/gi, '');
+}
 
 export default GameDisplay;

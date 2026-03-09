@@ -31,6 +31,8 @@ export function runApp(appId: number, onAppClose?: () => void, onAppLaunch?: () 
             onAppLaunch();
             unregister();
         }, AppRunStateChange.START);
+        // Auto-unregister after 60s if app never starts
+        setTimeout(() => { try { unregister(); } catch (_) {} }, 60000);
     }
     if (onAppClose) {
         const { unregister } = registerForAppRunStateChange(appId, () => {
@@ -42,6 +44,8 @@ export function runApp(appId: number, onAppClose?: () => void, onAppLaunch?: () 
                 , 1000);
             unregister();
         }, AppRunStateChange.END);
+        // Auto-unregister after 24h if app never closes (safety net)
+        setTimeout(() => { try { unregister(); } catch (_) {} }, 86400000);
     }
     let gid = gameIDFromAppID(appId);
     if (gid && gid !== -1) SteamClient.Apps.RunGame(gid as string, "", -1, 100);

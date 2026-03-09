@@ -6,7 +6,7 @@ function download_and_install() {
     flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
     flatpak --user install flathub org.gnome.Platform//49 -y
 
-    wget "$DOWNLOAD_LOCATION_GOGDL"
+    wget -O gogdl.flatpak "$DOWNLOAD_LOCATION_GOGDL" || { echo "ERROR: Failed to download gogdl"; return 1; }
 
     flatpak --user install "gogdl.flatpak" -y
     rm -f gogdl.flatpak

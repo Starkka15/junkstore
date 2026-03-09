@@ -13,7 +13,7 @@ if [[ "${PLATFORM}" == "Itchio" ]]; then
 fi
 
 function Itchio_init() {
-    $ITCHIOCONF --list --dbfile $DBFILE &> /dev/null
+    $ITCHIOCONF --list --dbfile "$DBFILE" &> /dev/null
 }
 
 function Itchio_refresh() {
@@ -37,22 +37,22 @@ function Itchio_getgames(){
         LIMIT="${3}"
     fi
     IMAGE_PATH=""
-    TEMP=$($ITCHIOCONF --getgameswithimages "${IMAGE_PATH}" "${FILTER}" "${INSTALLED}" "${LIMIT}" "true" --dbfile $DBFILE)
-    echo $TEMP >> $DECKY_PLUGIN_LOG_DIR/debug.log
+    TEMP=$($ITCHIOCONF --getgameswithimages "${IMAGE_PATH}" "${FILTER}" "${INSTALLED}" "${LIMIT}" "true" --dbfile "$DBFILE")
+    echo "$TEMP" >> $DECKY_PLUGIN_LOG_DIR/debug.log
     if echo "$TEMP" | jq -e '.Content.Games | length == 0' &>/dev/null; then
         if [[ $FILTER == "" ]] && [[ $INSTALLED == "false" ]]; then
             TEMP=$(Itchio_init)
-            TEMP=$($ITCHIOCONF --getgameswithimages "${IMAGE_PATH}" "${FILTER}" "${INSTALLED}" "${LIMIT}" "true" --dbfile $DBFILE)
+            TEMP=$($ITCHIOCONF --getgameswithimages "${IMAGE_PATH}" "${FILTER}" "${INSTALLED}" "${LIMIT}" "true" --dbfile "$DBFILE")
         fi
     fi
-    echo $TEMP
+    echo "$TEMP"
 }
 function Itchio_saveplatformconfig(){
-    cat | $ITCHIOCONF --parsejson "${1}" --dbfile $DBFILE --platform Proton --fork "" --version "" --dbfile $DBFILE
+    cat | $ITCHIOCONF --parsejson "${1}" --dbfile "$DBFILE" --platform Proton --fork "" --version "" --dbfile "$DBFILE"
 }
 function Itchio_getplatformconfig(){
-    TEMP=$($ITCHIOCONF --confjson "${1}" --platform Proton --fork "" --version "" --dbfile $DBFILE)
-    echo $TEMP
+    TEMP=$($ITCHIOCONF --confjson "${1}" --platform Proton --fork "" --version "" --dbfile "$DBFILE")
+    echo "$TEMP"
 }
 
 function Itchio_cancelinstall(){
@@ -68,7 +68,7 @@ function Itchio_cancelinstall(){
 function Itchio_download(){
     PROGRESS_LOG="${DECKY_PLUGIN_LOG_DIR}/${1}.progress"
     mkdir -p "${INSTALL_DIR}"
-    $ITCHIOCONF --download-game "${1}" --install-dir "${INSTALL_DIR}" --dbfile $DBFILE 2> $PROGRESS_LOG > "${DECKY_PLUGIN_LOG_DIR}/${1}.output" &
+    $ITCHIOCONF --download-game "${1}" --install-dir "${INSTALL_DIR}" --dbfile "$DBFILE" 2> $PROGRESS_LOG > "${DECKY_PLUGIN_LOG_DIR}/${1}.output" &
     echo $! > "${DECKY_PLUGIN_LOG_DIR}/${1}.pid"
     echo "{\"Type\": \"Progress\", \"Content\": {\"Message\": \"Downloading\"}}"
 
@@ -79,48 +79,48 @@ function Itchio_install(){
     rm $PROGRESS_LOG &>> ${DECKY_PLUGIN_LOG_DIR}/${1}.log
 
     # Detect executable in installed game directory
-    $ITCHIOCONF --detect-executable "${1}" --dbfile $DBFILE
+    $ITCHIOCONF --detect-executable "${1}" --dbfile "$DBFILE"
 
-    RESULT=$($ITCHIOCONF --addsteamclientid "${1}" "${2}" --dbfile $DBFILE)
-    TEMP=$($ITCHIOCONF --update-umu-id "${1}" itchio --dbfile $DBFILE)
+    RESULT=$($ITCHIOCONF --addsteamclientid "${1}" "${2}" --dbfile "$DBFILE")
+    TEMP=$($ITCHIOCONF --update-umu-id "${1}" itchio --dbfile "$DBFILE")
     ARGS=$($ARGS_SCRIPT "${1}")
-    TEMP=$($ITCHIOCONF --launchoptions "${1}" "${ARGS}" "" --dbfile $DBFILE)
-    echo $TEMP
+    TEMP=$($ITCHIOCONF --launchoptions "${1}" "${ARGS}" "" --dbfile "$DBFILE")
+    echo "$TEMP"
     exit 0
 }
 
 function Itchio_getlaunchoptions(){
     ARGS=$($ARGS_SCRIPT "${1}")
-    TEMP=$($ITCHIOCONF --launchoptions "${1}" "${ARGS}" "" --dbfile $DBFILE)
-    echo $TEMP
+    TEMP=$($ITCHIOCONF --launchoptions "${1}" "${ARGS}" "" --dbfile "$DBFILE")
+    echo "$TEMP"
     exit 0
 }
 
 function Itchio_uninstall(){
-    GAME_DIR=$($ITCHIOCONF --get-game-dir "${1}" --dbfile $DBFILE)
+    GAME_DIR=$($ITCHIOCONF --get-game-dir "${1}" --dbfile "$DBFILE")
     if [ -d "${GAME_DIR}" ]; then
         rm -rf "${GAME_DIR}"
     fi
-    TEMP=$($ITCHIOCONF --clearsteamclientid "${1}" --dbfile $DBFILE)
-    echo $TEMP
+    TEMP=$($ITCHIOCONF --clearsteamclientid "${1}" --dbfile "$DBFILE")
+    echo "$TEMP"
 
 }
 function Itchio_getgamedetails(){
     IMAGE_PATH=""
-    TEMP=$($ITCHIOCONF --getgamedata "${1}" "${IMAGE_PATH}" --dbfile $DBFILE --forkname "Proton" --version "null" --platform "Windows")
-    echo $TEMP
+    TEMP=$($ITCHIOCONF --getgamedata "${1}" "${IMAGE_PATH}" --dbfile "$DBFILE" --forkname "Proton" --version "null" --platform "Windows")
+    echo "$TEMP"
     exit 0
 }
 
 function Itchio_getgamesize(){
-    TEMP=$($ITCHIOCONF --get-game-size "${1}" "${2}"  --dbfile $DBFILE)
-    echo $TEMP
+    TEMP=$($ITCHIOCONF --get-game-size "${1}" "${2}"  --dbfile "$DBFILE")
+    echo "$TEMP"
 }
 
 function Itchio_getprogress()
 {
-    TEMP=$($ITCHIOCONF --getprogress "${DECKY_PLUGIN_LOG_DIR}/${1}.progress" --dbfile $DBFILE)
-    echo $TEMP
+    TEMP=$($ITCHIOCONF --getprogress "${DECKY_PLUGIN_LOG_DIR}/${1}.progress" --dbfile "$DBFILE")
+    echo "$TEMP"
 }
 function Itchio_loginstatus(){
     if [[ -z $1 ]]; then
@@ -128,8 +128,8 @@ function Itchio_loginstatus(){
     else
         FLUSH_CACHE="--flush-cache"
     fi
-    TEMP=$($ITCHIOCONF --getloginstatus --dbfile $DBFILE $FLUSH_CACHE)
-    echo $TEMP
+    TEMP=$($ITCHIOCONF --getloginstatus --dbfile "$DBFILE" $FLUSH_CACHE)
+    echo "$TEMP"
 
 }
 
@@ -150,13 +150,13 @@ function Itchio_logout(){
 }
 
 function Itchio_update-umu-id(){
-    TEMP=$($ITCHIOCONF --update-umu-id "${1}" itchio --dbfile $DBFILE)
+    TEMP=$($ITCHIOCONF --update-umu-id "${1}" itchio --dbfile "$DBFILE")
     echo "{\"Type\": \"Success\", \"Content\": {\"Message\": \"Umu Id updated\"}}"
 }
 
 function Itchio_run-exe(){
     get_steam_env
-    SETTINGS=$($ITCHIOCONF --get-env-settings $ID --dbfile $DBFILE)
+    SETTINGS=$($ITCHIOCONF --get-env-settings $ID --dbfile "$DBFILE")
     eval "${SETTINGS}"
     STEAM_ID="${1}"
     GAME_SHORTNAME="${2}"
@@ -168,14 +168,14 @@ function Itchio_run-exe(){
         ARGS=""
     fi
     COMPAT_TOOL="${5}"
-    GAME_PATH=$($ITCHIOCONF --get-game-dir $GAME_SHORTNAME --dbfile $DBFILE)
+    GAME_PATH=$($ITCHIOCONF --get-game-dir "$GAME_SHORTNAME" --dbfile "$DBFILE")
     launchoptions "\\\"${GAME_PATH}/${GAME_EXE}\\\""  "${ARGS}  &> ${DECKY_PLUGIN_LOG_DIR}/run-exe.log" "${GAME_PATH}" "Run exe" true "${COMPAT_TOOL}"
 }
 function Itchio_get-exe-list(){
     get_steam_env
     STEAM_ID="${1}"
     GAME_SHORTNAME="${2}"
-    GAME_PATH=$($ITCHIOCONF --get-game-dir $GAME_SHORTNAME --dbfile $DBFILE)
+    GAME_PATH=$($ITCHIOCONF --get-game-dir "$GAME_SHORTNAME" --dbfile "$DBFILE")
     export STEAM_COMPAT_DATA_PATH="${HOME}/.local/share/Steam/steamapps/compatdata/${STEAM_ID}"
     export STEAM_COMPAT_CLIENT_INSTALL_PATH="${GAME_PATH}"
     cd "${STEAM_COMPAT_CLIENT_INSTALL_PATH}"
@@ -192,16 +192,16 @@ function Itchio_get-exe-list(){
 }
 
 function Itchio_getsetting(){
-    TEMP=$($ITCHIOCONF --getsetting $1 --dbfile $DBFILE)
-    echo $TEMP
+    TEMP=$($ITCHIOCONF --getsetting "$1" --dbfile "$DBFILE")
+    echo "$TEMP"
 }
 function Itchio_savesetting(){
-    $ITCHIOCONF --savesetting $1 $2 --dbfile $DBFILE
+    $ITCHIOCONF --savesetting "$1" "$2" --dbfile "$DBFILE"
 }
 function Itchio_getjsonimages(){
 
-    TEMP=$($ITCHIOCONF --get-base64-images "${1}" --dbfile $DBFILE --offline)
-    echo $TEMP
+    TEMP=$($ITCHIOCONF --get-base64-images "${1}" --dbfile "$DBFILE" --offline)
+    echo "$TEMP"
 }
 function Itchio_gettabconfig(){
     if [[ ! -d "${DECKY_PLUGIN_RUNTIME_DIR}/conf_schemas" ]]; then

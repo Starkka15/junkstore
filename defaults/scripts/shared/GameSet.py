@@ -1,5 +1,6 @@
 
 import argparse
+import html
 import json
 import sys
 import sqlite3
@@ -68,7 +69,7 @@ class GameSet:
         c = conn.cursor()
         
         res = c.execute("PRAGMA journal_mode=WAL;")
-        c.execute("PRAGMA synchronous=OFF;")
+        c.execute("PRAGMA synchronous=NORMAL;")
         conn.commit()
 
         return conn
@@ -399,6 +400,16 @@ class GameSet:
             content = f.read()
             return self.generate_bash_env_settings(content)
 
+    @staticmethod
+    def _escape_bash_value(value):
+        """Escape special characters for safe use inside double-quoted bash strings."""
+        value = value.replace('\\', '\\\\')
+        value = value.replace('"', '\\"')
+        value = value.replace('$', '\\$')
+        value = value.replace('`', '\\`')
+        value = value.replace('!', '\\!')
+        return value
+
     def generate_bash_env_settings(self, config_json):
         script = "#!/usr/bin/env bash\n"
         config = json.loads(config_json)
@@ -413,10 +424,11 @@ class GameSet:
                     else:
                         script += f"unset {section['Name'].upper()}_{option['Key'].upper()}\n"
                     continue
+                escaped_value = self._escape_bash_value(option['Value'])
                 if 'NoPrefix' in option and option['NoPrefix'] == True:
-                    script += f"export {option['Key'].upper()}=\"{option['Value']}\"\n"
+                    script += f"export {option['Key'].upper()}=\"{escaped_value}\"\n"
                 else:
-                    script += f"export {section['Name'].upper()}_{option['Key'].upper()}=\"{option['Value']}\"\n"
+                    script += f"export {section['Name'].upper()}_{option['Key'].upper()}=\"{escaped_value}\"\n"
             script += "\n"
         return script
 
@@ -424,6 +436,7 @@ class GameSet:
         return os.path.join(dir, f"conf_schemas/{schema}.json")
 
     def get_config_json(self, shortnames, forkname, version, platform):
+        conn = None
         try:
             print(f"Getting config for {shortnames} {forkname} {version} {platform}", file=sys.stderr)
             config_schema = f"{platform}_{forkname}_{version}"
@@ -455,6 +468,9 @@ class GameSet:
                         order by config_set.platform desc, config_set.forkname desc, config_set.version desc""", (shortname, forkname, version, platform))
                 row = c.fetchone()
                 print(f"Found config set {row}", file=sys.stderr)
+                if row is None:
+                    print(f"No config set found for {shortname}, skipping", file=sys.stderr)
+                    continue
                 id = row[0]
                 print(f"Found config set id {id}", file=sys.stderr)
                 c.execute(
@@ -488,11 +504,12 @@ class GameSet:
             print(f"Setting autoexec config data", file=sys.stderr)
             config_data['Autoexec'] = autoexec_text
             print(f"Returning config data: {config_data}", file=sys.stderr)
-            conn.close()
             return json.dumps({'Type': 'IniContent', 'Content': config_data})
         except Exception as e:
             print(f"An error occurred: ", e, file=sys.stderr)
-            # Handle the exception here
+        finally:
+            if conn:
+                conn.close()
 
     def find_section(self, config_data, section_name):
         for section in config_data['Sections']:
@@ -521,8 +538,8 @@ class GameSet:
             images.append(self.download(url))
 
         conn.close()
-        tallImage = images[0]
-        wideImage = images[1]
+        tallImage = images[0] if len(images) > 0 else None
+        wideImage = images[1] if len(images) > 1 else tallImage
         return json.dumps({'Type': 'Images', 'Content': {'Grid': tallImage, 'GridH': wideImage, 'Hero': wideImage, 'Logo': tallImage}})
 
     def download(self, url):
@@ -603,28 +620,32 @@ class GameSet:
             return None
 
     def display_game_details(self, game_data):
-        html = f"<div style=' width: 100%;'>"
-        html += f"<p style='width:100%; white-space: pre-wrap;'>{game_data['Description']}</p>"
-        html += f"</div>"
-        html += f"<div>"
-        # if game_data['Size'] != None:
-        #     html += f"<p>Size: {game_data['Size']}</p>"
+        desc = html.escape(game_data['Description'] or '')
+        out = f"<div style=' width: 100%;'>"
+        out += f"<p style='width:100%; white-space: pre-wrap;'>{desc}</p>"
+        out += f"</div>"
+        out += f"<div>"
         if game_data['Publisher'] != None and game_data['Publisher'] != "":
-            html += f"<p>Publisher: {game_data['Publisher']}</p>"
-        html += f"<p>Developer: {game_data['Developer']}</p>"
+            out += f"<p>Publisher: {html.escape(game_data['Publisher'])}</p>"
+        if game_data['Developer'] != None and game_data['Developer'] != "":
+            out += f"<p>Developer: {html.escape(game_data['Developer'])}</p>"
         if game_data['Genre'] != None and game_data['Genre'] != "":
-            html += f"<p>Genre: {game_data['Genre']}</p>"
+            out += f"<p>Genre: {html.escape(game_data['Genre'])}</p>"
         if game_data['ReleaseDate'] != None and game_data['ReleaseDate'] != "":
-            html += f"<p>Release Date: {game_data['ReleaseDate']}</p>"
-        html += f"</div>"
-        return html
+            out += f"<p>Release Date: {html.escape(game_data['ReleaseDate'])}</p>"
+        out += f"</div>"
+        return out
 
     def get_editors(self, shortname, platform, forkname, version):
         conn = self.get_connection()
         c = conn.cursor()
         c.row_factory = sqlite3.Row
         c.execute("SELECT ID FROM Game WHERE ShortName=?", (shortname,))
-        game_id = c.fetchone()[0]
+        row = c.fetchone()
+        if row is None:
+            conn.close()
+            return []
+        game_id = row[0]
         editors = []
         if self.setNameConfig != None:
 

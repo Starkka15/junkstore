@@ -48,7 +48,11 @@ export const GridContent: VFC<GridContentProps> = ({ content, serverAPI, initAct
 
     useEffect(() => {
         installQueue.setServerAPI(serverAPI);
-        return installQueue.subscribe(setQueueState);
+        const unsub = installQueue.subscribe(setQueueState);
+        return () => {
+            unsub();
+            if (debounceRef.current) clearTimeout(debounceRef.current);
+        };
     }, [serverAPI]);
 
     const toggleSelection = (game: GameData) => {
